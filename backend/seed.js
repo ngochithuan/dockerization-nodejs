@@ -64,6 +64,12 @@ function buildMockDrinks() {
 async function seed() {
   await connectDB();
 
+  // --if-empty: chỉ seed khi chưa có dữ liệu (dùng khi `docker compose up`, tránh xóa dữ liệu cũ)
+  if (process.argv.includes("--if-empty") && (await Drink.estimatedDocumentCount()) > 0) {
+    console.log("Database already has data, skipping seed");
+    return;
+  }
+
   // 1. Xóa db nếu có
   await mongoose.connection.dropDatabase();
   console.log(`Dropped database "${mongoose.connection.name}"`);

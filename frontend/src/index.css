@@ -1,111 +1,154 @@
+/*
+ * Drink Menu: mặt trước của một máy pha espresso.
+ * Nền thép xước sáng, các module thép ghép bằng đường seam 1px, thân sơn tĩnh điện màu rang (roast)
+ * cho đồng hồ, nút chính và toast. Đèn LED: xanh = còn hàng, đỏ = không khả dụng,
+ * hổ phách = thay đổi / đang chọn.
+ */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Thép */
+  --steel-0: #e2e0dc;
+  --steel-1: #eeece8;
+  --steel-2: #f6f5f2;
+  --steel-recess: #d8d5d0;
+  --seam: #c8c4be;
+  --seam-strong: #aea9a2;
+  --highlight: rgba(255, 255, 255, 0.85);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Chữ trên thép */
+  --ink: #241a13;
+  --ink-2: #574d45;
+  --ink-3: #6b625a;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  /* Thân sơn màu rang */
+  --roast: #2c1b13;
+  --roast-2: #3d281d;
+  --roast-3: #4a3326;
+  --roast-ink: #f4e8d8;
+  --roast-ink-2: #c8b29c;
+
+  /* Đèn LED */
+  --led-green: #2fa560;
+  --led-green-ink: #1c7440;
+  --led-red: #d8432f;
+  --led-red-ink: #ab2e1d;
+  --amber: #f2a623;
+  --amber-ink: #835000;
+  --amber-soft: rgba(242, 166, 35, 0.22);
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --ui: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gauge: 'Barlow Condensed', 'Be Vietnam Pro', system-ui, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  font: 400 15px/1.5 var(--ui);
+  color-scheme: light;
+  color: var(--ink);
+  background: var(--steel-0);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  scrollbar-color: var(--seam-strong) var(--steel-0);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
+  background-color: var(--steel-0);
+  /* Vân thép xước ngang */
+  background-image:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.22) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(0deg, rgba(60, 45, 30, 0.025) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #e9e7e3 0%, var(--steel-0) 420px);
+  background-attachment: fixed;
 }
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
+h2,
+h3,
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  caret-color: var(--amber-ink);
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+
+::selection {
+  background: var(--amber-soft);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--steel-0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--seam-strong);
+  border: 3px solid var(--steel-0);
+  border-radius: 999px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
