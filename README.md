@@ -1,6 +1,19 @@
 # dockerization-nodejs
 Project cho giữa kì môn Phát triển ứng dụng với NodeJS
 
+# Levels
+## Cấp độ 1:
+- Triển khai một hệ thống Docker đơn giản sử dụng Docker Compose.
+- Hệ thống phải bao gồm ít nhất 3 dịch vụ: front-end (ví dụ: HTML, React, Angular), back-end (Node.js) và cơ sở dữ liệu (ví dụ: MySQL, MongoDB).
+- Đảm bảo các dịch vụ này nằm trong cùng một mạng Docker (Docker network) và có thể giao tiếp với nhau.
+- Sinh viên cần đảm bảo rằng giảng viên có thể chạy dự án bằng lệnh “docker compose up -d”. Các lệnh khác (như “npm install”) phải được cấu hình sẵn bên trong tệp YAML của Docker Compose hoặc Dockerfile.
+## Cấp độ 2:
+- Thể hiện khả năng mở rộng của hệ thống bằng cách nhân bản một dịch vụ (ví dụ: mở rộng dịch vụ back-end thành nhiều container) và thiết lập cơ chế cân bằng tải (load balancing) giữa các container đó.
+- Thực hiện tách biệt các dịch vụ (service decoupling) thông qua các thành phần trung gian như RabbitMQ hoặc Redis để truyền thông điệp; điều này cho phép giao tiếp bất đồng bộ (asynchronous communication), giúp tăng cường khả năng mở rộng và độ bền vững của hệ thống. Các ví dụ về giao tiếp bất đồng bộ thông qua message broker bao gồm: dịch vụ tải tệp lên và dịch vụ xử lý tệp; dịch vụ đăng ký người dùng và dịch vụ gửi thông điệp chào mừng; dịch vụ đặt hàng và dịch vụ gửi thông báo qua email.
+## Cấp độ 3:
+- Trình bày cách triển khai dự án trên một nền tảng điều phối container (container orchestration platform) như Docker Swarm hoặc Kubernetes.
+- Giải thích cách thức điều phối (orchestration) giúp cải thiện khả năng mở rộng, tính sẵn sàng và công tác quản lý dịch vụ.
+
 # Report content
 ## Introduction to Docker
 Docker là gì? - Tại sao Docker lại quan trọng trong việc phát triển web hiện đại
