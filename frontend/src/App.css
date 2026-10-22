@@ -192,6 +192,228 @@
   }
 }
 
+/* Nút trạng thái hàng đợi RabbitMQ: dùng chung hình dạng với đèn API nhưng bấm được */
+.queue-btn {
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.2s var(--ease),
+    border-color 0.2s var(--ease);
+}
+
+.queue-btn:hover {
+  background: var(--steel-2);
+  border-color: var(--seam);
+}
+
+.queue-btn[aria-expanded='true'] {
+  background: var(--steel-2);
+  border-color: var(--amber);
+}
+
+.api-lamp--green.queue-btn {
+  color: var(--ink-2);
+}
+
+/* ---------- Bảng hàng đợi sự kiện (RabbitMQ) ---------- */
+.events {
+  position: fixed;
+  top: 65px;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100vw);
+  border-left: 1px solid var(--seam-strong);
+  background: var(--steel-1);
+  box-shadow:
+    inset 1px 0 0 var(--highlight),
+    -18px 0 40px -24px rgba(30, 18, 10, 0.45);
+  animation: slide-in 0.35s var(--ease);
+}
+
+.events[hidden] {
+  display: none;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.events__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 12px 20px;
+  border-bottom: 1px solid var(--seam);
+}
+
+.events__head h2 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.events__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 24px;
+  overflow-y: auto;
+}
+
+.events__intro {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+
+.events__intro code {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--steel-recess);
+  color: var(--ink);
+}
+
+.events__gauges {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 8px;
+}
+
+.gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid #1a0f0a;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, var(--roast-2), var(--roast));
+  color: var(--roast-ink);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.gauge__label {
+  font-size: 11.5px;
+  color: var(--roast-ink-2);
+}
+
+.gauge__value {
+  font-family: var(--gauge);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.gauge__value--text {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 34px;
+}
+
+.gauge__value.is-waiting {
+  color: var(--amber);
+}
+
+.gauge__value.is-down {
+  color: #f07a68;
+}
+
+.events__list-title {
+  margin-top: 4px;
+}
+
+.events__empty {
+  padding: 12px 0;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.events__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--seam);
+}
+
+.event {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--seam);
+  animation: slide-in 0.4s var(--ease);
+}
+
+.event__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.event__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.event__time {
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.event__msg {
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.event__route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.event__wait {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: var(--amber-ink);
+  font-family: var(--ui);
+  font-weight: 600;
+}
+
+@media (max-width: 860px) {
+  .api-lamp:not(.queue-btn) .api-lamp__text {
+    display: none;
+  }
+
+  .api-lamp:not(.queue-btn) {
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
 /* ---------- Nút ---------- */
 .btn {
   display: inline-flex;

@@ -1,4 +1,4 @@
-import type { Drink, DrinkInput } from '../types'
+import type { ActivityFeed, Drink, DrinkInput } from '../types'
 
 // Mặc định gọi cùng origin (/api) — Vite dev server / reverse proxy sẽ chuyển tiếp tới backend.
 const BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '')
@@ -44,4 +44,8 @@ export const drinkApi = {
 
   remove: (id: string) =>
     request<{ message: string; drink: Drink }>(`/drinks/${id}`, { method: 'DELETE' }),
+}
+
+export const activityApi = {
+  list: (limit = 20) => request<ActivityFeed>(`/activities?limit=${limit}`),
 }

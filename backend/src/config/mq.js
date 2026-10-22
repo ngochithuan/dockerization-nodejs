@@ -44,4 +44,15 @@ function publish(type, data) {
   });
 }
 
-module.exports = { connectMQ, publish, QUEUE };
+// Số tin đang chờ trong queue và số worker đang nghe (dùng để hiển thị trên giao diện)
+async function queueStatus() {
+  if (!channel) return { connected: false, queue: QUEUE, messages: null, consumers: null };
+  try {
+    const { messageCount, consumerCount } = await channel.checkQueue(QUEUE);
+    return { connected: true, queue: QUEUE, messages: messageCount, consumers: consumerCount };
+  } catch {
+    return { connected: false, queue: QUEUE, messages: null, consumers: null };
+  }
+}
+
+module.exports = { connectMQ, publish, queueStatus, QUEUE };
