@@ -1,84 +1,124 @@
-# dockerization-nodejs
-Project cho giữa kì môn Phát triển ứng dụng với NodeJS
+# Drink Management App – Dockerized Node.js Web Application
 
-# Levels
-## Cấp độ 1:
-- Triển khai một hệ thống Docker đơn giản sử dụng Docker Compose.
-- Hệ thống phải bao gồm ít nhất 3 dịch vụ: front-end (ví dụ: HTML, React, Angular), back-end (Node.js) và cơ sở dữ liệu (ví dụ: MySQL, MongoDB).
-- Đảm bảo các dịch vụ này nằm trong cùng một mạng Docker (Docker network) và có thể giao tiếp với nhau.
-- Sinh viên cần đảm bảo rằng giảng viên có thể chạy dự án bằng lệnh “docker compose up -d”. Các lệnh khác (như “npm install”) phải được cấu hình sẵn bên trong tệp YAML của Docker Compose hoặc Dockerfile.
-## Cấp độ 2:
-- Thể hiện khả năng mở rộng của hệ thống bằng cách nhân bản một dịch vụ (ví dụ: mở rộng dịch vụ back-end thành nhiều container) và thiết lập cơ chế cân bằng tải (load balancing) giữa các container đó.
-- Thực hiện tách biệt các dịch vụ (service decoupling) thông qua các thành phần trung gian như RabbitMQ hoặc Redis để truyền thông điệp; điều này cho phép giao tiếp bất đồng bộ (asynchronous communication), giúp tăng cường khả năng mở rộng và độ bền vững của hệ thống. Các ví dụ về giao tiếp bất đồng bộ thông qua message broker bao gồm: dịch vụ tải tệp lên và dịch vụ xử lý tệp; dịch vụ đăng ký người dùng và dịch vụ gửi thông điệp chào mừng; dịch vụ đặt hàng và dịch vụ gửi thông báo qua email.
-## Cấp độ 3:
-- Trình bày cách triển khai dự án trên một nền tảng điều phối container (container orchestration platform) như Docker Swarm hoặc Kubernetes.
-- Giải thích cách thức điều phối (orchestration) giúp cải thiện khả năng mở rộng, tính sẵn sàng và công tác quản lý dịch vụ.
+Mid-term essay for **Web Programming with Node.js (502070)**. Lecturer: Mai Van Manh.
 
-# Report content
-## Introduction to Docker
-Docker là gì? - Tại sao Docker lại quan trọng trong việc phát triển web hiện đại
-Giới thiệu về key concepts như:
-- containers
-- images
-- dockerfile
-- docker compose
-- container orchestration
+A drink menu manager for a small café: staff can list, search, add, edit and delete drinks. Each change is published to RabbitMQ, and a separate notification service tells the bar (simulated) asynchronously. The whole system runs with a single command:
 
-## Theoretical Survey
-Giải thích kiến ​​trúc của Docker và công nghệ nền tảng của nó (ví dụ: namespaces, cgroups, union file systems).
+```bash
+docker compose up -d
+```
 
-Thảo luận: Docker đơn giản hóa việc phát triển và triển khai các ứng dụng NodeJS như thế nào?
+Then open http://localhost:3000. Step-by-step instructions for building, running and testing are in [ReadMe.txt](ReadMe.txt).
 
-Trình bày những lợi ích và thách thức của việc sử dụng container trong phát triển web (như scalability, isolation và deployment, automation).
+## Team
 
-## Project Overview
-Giới thiệu cụ thể project của nhóm chọn để demonstrate
-Giải thích ngữ cảnh của project và tại sao Docker được dùng trong bối cảnh này
-Hãy mô tả các dịch vụ liên quan (e.g., front-end, back-end, database) và cách chúng tương tác với nhau.
+| Student ID | Name |
+| --- | --- |
+| 523H0018 | Le Nguyen Cao Duy |
+| 523H0102 | Ngo Chi Thuan |
+| 523H0023 | Do Nguyen Tri Hao |
 
-## Architecture and Implementation
-Giải thích chi tiết architecture được thiết kể bởi nhóm, tập trung vào Docker và Docker Compose được dùng như thế nào
-Mô tả rõ ràng cho những services đã được deploy và các chúng tương tác với nhau. show Docker Compose file (nếu có dùng) và Dockerfiles
-Đối với nhóm nâng cao, mô tả cách nhóm implement scaling, load balancing, service decoupling
-Nếu các orchestration tools (công cụ điều phối) (eg., Docker Swarm hoặc Kubernetes) được sử dụng, hãy giải thích vai trò của chúng trong dự án và cách chúng cải thiện quá trình deploy.
+## Requirement levels covered
 
-## Results and Discussion
-Trình bày kết quả của dự án Docker hóa của bạn.
-Thảo luận về performance, scalability, reliability của solution của nhóm
-Highlight các thử thách mà nhóm đã gặp và cách nhóm đã vượt quanhóm
+| Level | Requirement | How this project meets it |
+| --- | --- | --- |
+| 1 | Front-end, back-end and database in Docker Compose | React + Nginx, Node.js/Express, MongoDB, started by `docker compose up -d` |
+| 1 | Services share a Docker network and communicate | Nginx → backend on `frontend-net`; backend/worker → MongoDB on `backend-net`; backend/worker → RabbitMQ on `mq-net` |
+| 1 | No manual `npm install` | `npm ci` and the React build run inside the Dockerfiles; a `seed` job inserts sample data |
+| 2 | Replicate a service with load balancing | 3 backend replicas; Nginx balances `/api` requests round robin, retries on another replica if one fails, and finds new replicas through Docker DNS |
+| 2 | Decouple services through a message broker | Backend publishes `drink.created/updated/deleted` to RabbitMQ; 2 worker replicas consume them asynchronously |
+| 3 | Container orchestration | `deploy/docker-stack.yml` for Docker Swarm: self-healing, rolling updates with rollback, routing mesh, resource limits |
 
-## Conclusion
-Tổng kết đã học được gì thông qua project này
+## Architecture
 
-## Avoid these
-Trang bìa được trình bày khá cẩu thả, có nhiều lỗi nghiêm trọng như: sử dụng logo không đạt chuẩn, thông tin giảng viên không chính xác, thông tin thành viên nhóm không đúng, tên đề tài không chính xác.
+```text
+Browser ──:3000──▶ frontend (Nginx: React static files + load balancer)
+                        │  /api/*  round robin + failover
+                        ▼
+              backend ×3 (Node.js / Express REST API)
+                │                       │
+                │ read/write            │ publish drink.* events
+                ▼                       ▼
+             MongoDB ◀──── write ──── RabbitMQ queue "drink_events"
+                                        │ consume (asynchronous)
+                                        ▼
+                              worker ×2 (notification service)
+```
 
-Thiếu các trang phụ lục cần thiết theo yêu cầu. Báo cáo không có đủ các chương hoặc nội dung theo quy định, chẳng hạn như: khảo sát lý thuyết, phân tích yêu cầu, thiết kế hệ thống, trình bày kết quả kèm theo các phân tích/so sánh cần thiết, chương kết luận của báo cáo.
+| Service | Image | Replicas | Role |
+| --- | --- | --- | --- |
+| `frontend` | built from `./frontend` (Node build stage → `nginx:1.29-alpine`) | 1 (2 in Swarm) | Serves the React app; reverse proxy and load balancer for `/api` |
+| `backend` | built from `./backend` (`node:22-alpine`) | 3 | REST API; saves to MongoDB and publishes events |
+| `worker` | built from `./worker` (`node:22-alpine`) | 2 | Consumes events, writes the activity log |
+| `rabbitmq` | `rabbitmq:3-management` | 1 | Message broker, management UI on port 15672 |
+| `mongo` | `mongo:7.0` | 1 | Database |
+| `seed` | same image as `backend` | one-shot | Inserts 25 sample drinks if the database is empty |
 
-Có lỗi chính tả; kiểu chữ, màu chữ và cỡ chữ không nhất quán; không sử dụng lề và giãn dòng phù hợp; lạm dụng các gạch đầu dòng trong phần trình bày.
+Design points:
 
-Báo cáo có nhiều nội dung chỉ ở dạng danh sách nhiệm vụ, sơ đồ, bảng biểu và biểu đồ để minh họa, làm cho nội dung khó hiểu đối với người đọc. Điều này cũng thể hiện khả năng giải thích và sử dụng ngôn ngữ viết chưa tốt.
+- **Startup order** uses `depends_on` with health checks: MongoDB and RabbitMQ healthy → seed finished → backend healthy → frontend.
+- **Network isolation**: `backend-net` is `internal`, so the database has no Internet access and cannot be reached from the frontend.
+- **Graceful shutdown**: on `SIGTERM` a backend replica keeps serving for a few seconds before closing, so Nginx stops sending it traffic and users see no errors during scaling or rolling updates.
+- **Reliable messaging**: the queue and messages are durable. Workers acknowledge a message only after processing it, so messages wait in the queue while workers are down and none are lost.
+- **Security**: the Node.js containers run as the non-root `node` user, and only ports 3000 and 15672 are published to the host.
 
-Thiếu sự đầu tư trong việc trình bày hình ảnh, bảng biểu và sơ đồ; ví dụ: hình ảnh quá lớn hoặc quá nhỏ, màu chữ/màu nền gây khó đọc, ảnh chụp màn hình có nội dung thừa, dẫn đến báo cáo được trình bày kém.
+## Tech stack
 
-Đề cập quá nhiều đến mã nguồn nhưng lại thiếu phần mô tả hoặc giải thích về hệ thống, nguyên lý hoạt động của các thành phần, cách nhóm triển khai và cài đặt hệ thống. Điều này khiến người đọc khó hiểu nhóm đang thực hiện điều gì, cách thu được kết quả hoặc những kiến thức/bài học có thể rút ra từ đề tài này.
+- **Front-end**: React 19, TypeScript, Vite, Nginx
+- **Back-end**: Node.js 22, Express 5, Mongoose 9, amqplib
+- **Infrastructure**: Docker, Docker Compose, Docker Swarm, MongoDB 7, RabbitMQ 3
 
-# Submitions
-## Report
-Tiếng Anh
-Word hoặc PDF
-## Source Code  và Dependencies
-- Source code
-- Dockerfile
-- Dockercompose file
-- Other configuration files
-- Các depedencies (eg., package.json, ...)
-## Video Presentation
-Tiếng Anh
-Tất cả thành viên trong nhóm đều tham gia
-## ReadMe.txt
-Hướng dẫn chạy project locally
-Chi tiết cách
-- Build Images
-- Chạy container
-- Test application
+## Project structure
+
+```text
+.
+├── docker-compose.yml        # Level 1 + 2: all services, networks, volumes
+├── deploy/
+│   └── docker-stack.yml      # Level 3: Docker Swarm stack
+├── backend/                  # Express REST API (+ seed.js)
+│   ├── Dockerfile
+│   ├── server.js
+│   └── src/                  # routes, controllers, models, config (MongoDB, RabbitMQ)
+├── worker/                   # RabbitMQ consumer (notification service)
+│   ├── Dockerfile
+│   └── worker.js
+├── frontend/                 # React + TypeScript UI
+│   ├── Dockerfile            # multi-stage: Node build -> Nginx
+│   ├── nginx.conf            # static files, reverse proxy, load balancing
+│   └── src/
+├── demo/video-link.txt       # link to the demo video
+└── ReadMe.txt                # build, run and test instructions
+```
+
+## API
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/health` | Service and database status, hostname of the replica that answered |
+| GET | `/api/drinks` | List all drinks |
+| GET | `/api/drinks/:id` | Get one drink |
+| POST | `/api/drinks` | Create a drink (publishes `drink.created`) |
+| PUT | `/api/drinks/:id` | Update a drink (publishes `drink.updated`) |
+| DELETE | `/api/drinks/:id` | Delete a drink (publishes `drink.deleted`) |
+| GET | `/api/activities` | RabbitMQ queue status and events processed by the workers |
+
+## Accounts
+
+| What | Account |
+| --- | --- |
+| Web application | No login |
+| MongoDB root | `admin` / `admin123` |
+| RabbitMQ management (http://localhost:15672) | `drink` / `drink123` |
+
+## Quick commands
+
+```bash
+docker compose up -d                       # build (first run) and start everything
+docker compose ps                          # status
+docker compose up -d --scale backend=5     # scale the backend
+docker compose logs -f worker              # watch the workers process events
+docker compose down                        # stop (data is kept)
+docker compose down -v                     # stop and delete all data
+```
+
+Docker Swarm deployment, test scenarios (load balancing, failover, scaling, asynchronous messaging) and troubleshooting are described in [ReadMe.txt](ReadMe.txt).

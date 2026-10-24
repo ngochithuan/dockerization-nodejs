@@ -1,30 +1,32 @@
 # Frontend – Drink Menu
 
-Giao diện React + TypeScript (Vite) quản lý đồ uống, dùng REST API của `backend/`.
+React + TypeScript (Vite) user interface for managing drinks, using the REST API of `backend/`.
 
-| Thao tác | Endpoint |
+| Action | Endpoint |
 | --- | --- |
-| Danh sách | `GET /api/drinks` |
-| Chi tiết | `GET /api/drinks/:id` |
-| Thêm | `POST /api/drinks` |
-| Sửa | `PUT /api/drinks/:id` |
-| Xóa | `DELETE /api/drinks/:id` |
+| List | `GET /api/drinks` |
+| Details | `GET /api/drinks/:id` |
+| Create | `POST /api/drinks` |
+| Update | `PUT /api/drinks/:id` |
+| Delete | `DELETE /api/drinks/:id` |
 
-## Chạy local
+## Run locally without Docker
 
 ```bash
 npm install
 npm run dev      # http://localhost:5173
 ```
 
-Frontend gọi `/api` cùng origin; Vite proxy chuyển tiếp tới backend (mặc định `http://localhost:8080`).
+The frontend calls `/api` on the same origin; the Vite proxy forwards it to the backend (default `http://localhost:8080`).
 
-## Biến môi trường
+In Docker, the app is built in the first stage of the `Dockerfile` and served by Nginx (`nginx.conf`), which also load-balances `/api` across the backend replicas.
 
-| Biến | Dùng khi | Mặc định |
+## Environment variables
+
+| Variable | Used by | Default |
 | --- | --- | --- |
-| `API_PROXY_TARGET` | `npm run dev` / `npm run preview` – địa chỉ backend để proxy `/api` | `http://localhost:8080` |
-| `VITE_API_URL` | Build time – base URL trình duyệt gọi API (VD: `http://localhost:8080/api`) | `/api` |
+| `API_PROXY_TARGET` | `npm run dev` / `npm run preview`: backend address that `/api` is proxied to | `http://localhost:8080` |
+| `VITE_API_URL` | Build time: base URL the browser uses for the API (e.g. `http://localhost:8080/api`) | `/api` |
 
 ## Build
 

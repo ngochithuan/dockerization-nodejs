@@ -4,7 +4,7 @@
   Lecturer : Mai Van Manh
   Level    : 3 - Docker Compose + scaling/load balancing + RabbitMQ
                  decoupling + Docker Swarm orchestration
-  Demo video link: see demo/video-link.txt (section 12)
+  Demo video link: demo/video-link.txt
 =====================================================================
 
 1. TEAM MEMBERS
@@ -18,27 +18,29 @@
 ---------------------------------------------------------------------
   - Docker Desktop (Docker Engine 24+ with Docker Compose v2)
   - Free host ports: 3000 (web app) and 15672 (RabbitMQ management UI)
-  No Node.js / npm / MongoDB / RabbitMQ installation is needed on the
-  host machine. All dependencies are installed inside the Docker images.
+
+  Node.js, npm, MongoDB and RabbitMQ do NOT need to be installed on the
+  host. "npm ci" and the React build run inside the Dockerfiles.
 
 
-3. QUICK START (LEVEL 1 + LEVEL 2)
+3. QUICK START
 ---------------------------------------------------------------------
   Open a terminal in the project root (the folder that contains
   docker-compose.yml) and run:
 
       docker compose up -d
 
-  The first run builds the images (about 2-4 minutes), then starts all
-  services in the correct order. Open:
+  The first run builds the images (about 2-4 minutes) and starts all
+  services in the correct order. Then open:
 
       Web application        http://localhost:3000
       RabbitMQ management    http://localhost:15672   (drink / drink123)
 
-  Sample data (25 drinks) is inserted automatically on the first run.
+  25 sample drinks are inserted automatically on the first run.
+  The web application has no login (no admin account is needed).
 
 
-4. ARCHITECTURE AND SERVICES
+4. ARCHITECTURE
 ---------------------------------------------------------------------
 
    Browser --:3000--> frontend (Nginx: React files + load balancer)
@@ -50,136 +52,110 @@
                 v                      v
              MongoDB  <--- write ---  RabbitMQ queue "drink_events"
                 ^                      |
-                |                      | consume (async)
+                |                      | consume (asynchronous)
                 +------- worker x2 <---+   (notification service)
 
-  Service    Image / Build        Replicas  Port (host:container)  Role
-  ---------  -------------------  --------  ---------------------  --------------------------------
-  frontend   ./frontend           1         3000:80                React UI served by Nginx;
-                                                                   reverse proxy + load balancer
-                                                                   for /api -> backend replicas
-  backend    ./backend            3         (internal) 8080        Node.js + Express REST API;
-                                                                   publishes drink events
-  worker     ./worker             2         -                      Notification service: consumes
-                                                                   events from RabbitMQ, writes the
-                                                                   activity log to MongoDB
-  rabbitmq   rabbitmq:3-mgmt      1         15672:15672            Message broker (AMQP 5672 is
-                                                                   internal only)
-  mongo      mongo:7.0            1         (internal) 27017       MongoDB database
-  seed       ./backend            -         -                      One-shot job: inserts sample data
-                                                                   if the DB is empty, then exits
+  Service   Replicas  Host port  Role
+  --------  --------  ---------  ------------------------------------------
+  frontend  1         3000       React UI served by Nginx; reverse proxy and
+                                 load balancer for /api -> backend replicas
+  backend   3         -          Node.js + Express REST API; publishes events
+  worker    2         -          Consumes events from RabbitMQ, writes the
+                                 activity log to MongoDB
+  rabbitmq  1         15672      Message broker (AMQP 5672 is internal only)
+  mongo     1         -          MongoDB 7 database
+  seed      -         -          One-shot job: inserts sample data if the
+                                 database is empty, then exits
 
-  Networks:
-    frontend-net : frontend <-> backend
-    backend-net  : backend, worker <-> mongo   (internal: no Internet,
-                                                not reachable from frontend)
-    mq-net       : backend, worker <-> rabbitmq
-  Volumes:
-    mongo-data, rabbitmq-data : data survives container restarts
-
-  Startup order (depends_on + healthchecks):
-    mongo, rabbitmq (healthy) -> seed (completed) -> backend (healthy)
-    -> frontend; worker starts when mongo and rabbitmq are healthy.
-
-  How a request flows:
-    1. React calls /api/drinks (same origin, http://localhost:3000).
-    2. Nginx sends it to ONE backend replica (round robin). Nginx asks
-       Docker DNS every 5 s which IPs "backend" has, so scaling needs
-       no restart. The response header X-Upstream shows which replica
-       served the request.
-    3. On create/update/delete the backend saves to MongoDB, publishes
-       an event to RabbitMQ and answers immediately (it does not wait).
-    4. A worker takes the event (each event goes to one worker), works
-       for ~2 s (simulated staff notification) and writes an activity
-       log entry. The UI panel "Hang doi su kien" shows the queue.
+  Networks : frontend-net (frontend <-> backend)
+             backend-net  (backend, worker <-> mongo; internal, no Internet)
+             mq-net       (backend, worker <-> rabbitmq)
+  Volumes  : mongo-data, rabbitmq-data (data survives restarts)
+  Startup  : mongo + rabbitmq healthy -> seed completed -> backend healthy
+             -> frontend. Workers start when mongo and rabbitmq are healthy.
 
 
-5. BUILD AND RUN STEP BY STEP
+5. BUILD THE IMAGES AND RUN THE CONTAINERS
 ---------------------------------------------------------------------
-  Build images only:
+  Build the images only (drink-app/backend, drink-app/worker,
+  drink-app/frontend):
       docker compose build
 
-  Start containers in the background:
+  Run all containers in the background:
       docker compose up -d
 
-  Rebuild after changing source code:
+  Rebuild and restart after changing the source code:
       docker compose up -d --build
 
-  Check status (services "healthy"/"Up"; seed shows "Exited (0)"):
+  Check status (all "healthy"/"Up"; seed shows "Exited (0)"):
       docker compose ps
 
-  View logs:
+  Follow the logs of a service:
       docker compose logs -f backend
       docker compose logs -f worker
 
-  Stop containers (data is kept):
+  Stop the containers (data is kept):
       docker compose down
 
-  Stop and DELETE all data (fresh start, sample data is re-seeded):
+  Stop and delete all data (sample data is re-seeded on the next start):
       docker compose down -v
 
 
-6. TESTING THE APPLICATION
+6. TEST THE APPLICATION
 ---------------------------------------------------------------------
-  a) Web UI: open http://localhost:3000 and list, search, filter, add,
-     edit and delete drinks. Click the queue button in the top bar to
-     open the event panel.
+  The user interface and the sample data are in Vietnamese. Commands
+  below work in Command Prompt, Git Bash, Linux and macOS. In Windows
+  PowerShell type "curl.exe" instead of "curl".
 
-  b) REST API (through Nginx):
+  a) Web UI - open http://localhost:3000
+     - Browse, search, filter and sort the drink menu.
+     - "Thêm đồ uống" (Add drink) button: create a drink.
+     - Pencil / trash icons on a card: edit / delete a drink.
+     - Queue button in the top bar (green lamp): opens the RabbitMQ event
+       panel that shows the queue and the events processed by workers.
+
+  b) REST API through Nginx:
       curl http://localhost:3000/api/health
       curl http://localhost:3000/api/drinks
       curl http://localhost:3000/api/activities
+      curl -X POST http://localhost:3000/api/drinks -H "Content-Type: application/json" -d "{\"name\":\"Test drink\",\"category\":\"Tea\",\"price\":30000,\"size\":\"M\"}"
 
-      curl -X POST http://localhost:3000/api/drinks ^
-        -H "Content-Type: application/json" ^
-        -d "{\"name\":\"Test drink\",\"category\":\"Tea\",\"price\":30000,\"size\":\"M\"}"
-
-     (On Linux/macOS replace ^ with \ at the end of each line.)
-
-  c) Inter-service communication inside the Docker network:
+  c) Communication between services inside the Docker network:
       docker compose exec frontend wget -qO- http://backend:8080/api/health
-      docker compose exec backend wget -qO- http://localhost:8080/api/health
+      docker compose exec mongo mongosh -u admin -p admin123 --authenticationDatabase admin drink_db --eval "db.drinks.countDocuments()"
 
-  d) Database:
-      docker compose exec mongo mongosh -u admin -p admin123 ^
-        --authenticationDatabase admin drink_db --eval "db.drinks.countDocuments()"
-
-  e) Reset sample data manually (drops and re-creates the database):
-      docker compose run --rm seed node seed.js
-
-
-7. DEMO SCENARIOS (LEVEL 2)
----------------------------------------------------------------------
-  (PowerShell commands; run them in the project root)
-
-  a) Load balancing - requests are spread over the 3 backend replicas:
+  d) Load balancing - run several times, the X-Upstream header shows a
+     different backend replica each time:
+      curl -sI http://localhost:3000/api/health
+     PowerShell (9 requests at once):
       1..9 | % { (Invoke-WebRequest http://localhost:3000/api/health -UseBasicParsing).Headers['X-Upstream'] }
-     Browser: DevTools > Network > request "drinks" > Response Headers
-     > X-Upstream changes on every reload.
+     Browser: DevTools > Network > "drinks" > Response Headers > X-Upstream
 
-  b) Fault tolerance - stop one replica while using the site:
+  e) Failover - stop one replica; the site keeps working because Nginx
+     skips the stopped replica:
       docker stop drink-app-backend-1
-     The site keeps working: Nginx skips the dead replica (failover).
       docker start drink-app-backend-1
 
-  c) Scaling on the fly (Nginx picks up new replicas within 5 s):
+  f) Scaling while running (Nginx finds new replicas within 5 seconds):
       docker compose up -d --scale backend=5
       docker compose up -d --scale backend=3
 
-  d) Asynchronous decoupling with RabbitMQ:
+  g) Asynchronous decoupling with RabbitMQ:
       docker compose stop worker
-     Add or edit drinks in the UI: the API still answers immediately,
-     and the event panel shows messages waiting in the queue
-     (also visible at http://localhost:15672 > Queues > drink_events).
+     Add or edit drinks: the API still answers immediately and the
+     messages wait in the queue (event panel, or
+     http://localhost:15672 > Queues > drink_events).
       docker compose start worker
-     The workers process every waiting message; nothing is lost.
-
-  e) Competing consumers - each event is handled by exactly one of the
-     2 workers (see "worker <id>" in the event panel or):
+     The workers process every waiting message; nothing is lost. Each
+     event is handled by exactly one of the 2 workers (competing
+     consumers), see "worker <id>" in the event panel or:
       docker compose logs -f worker
 
+  h) Reset the sample data (drops and re-creates the database):
+      docker compose run --rm seed node seed.js
 
-8. DOCKER SWARM (LEVEL 3)
+
+7. DOCKER SWARM (LEVEL 3)
 ---------------------------------------------------------------------
   File: deploy/docker-stack.yml (same services, managed by Swarm).
 
@@ -189,60 +165,55 @@
       docker swarm init
       docker stack deploy --resolve-image never -c deploy/docker-stack.yml drink
 
-  (--resolve-image never: use the images built locally instead of
-   looking them up on Docker Hub.)
+  "--resolve-image never" uses the images built locally instead of
+  looking for them on Docker Hub.
 
   Check:
       docker stack services drink
       docker service ps drink_backend
-     Open http://localhost:3000 when all replicas show e.g. 3/3.
-     The first deploy can take 2-3 minutes: mongo may stay "Preparing"
-     for a while and the backend restarts until MongoDB is ready
-     (self-healing). After backend shows 3/3, wait about 40 seconds:
-     Swarm adds a replica to DNS only after its health check passes,
-     and Nginx then picks up the new IPs within 5 seconds.
+  Open http://localhost:3000 when every service shows its full replica
+  count (e.g. 3/3). The first deploy can take 2-3 minutes: the backend
+  restarts until MongoDB is ready (self-healing). After backend shows
+  3/3, wait about 40 seconds: a replica is added to DNS only after its
+  health check passes.
 
-  What Swarm adds compared to Compose:
-    - Self-healing: a crashed or killed container is replaced
-      automatically.
-          docker kill <id of a drink_backend container>
-          docker service ps drink_backend      (a new task starts)
-    - Scaling with one command:
-          docker service scale drink_backend=5
-    - Rolling update without downtime (one replica at a time, new
-      replica starts before the old one stops, auto rollback on
-      failure):
-          docker service update --force drink_backend
-    - Routing mesh: port 3000 is published by Swarm and spread over the
-      2 frontend replicas.
-    - CPU/memory limits per service.
+  Test what Swarm adds:
+      docker kill <id of a drink_backend container>   (self-healing:
+      docker service ps drink_backend                  a new task starts)
+      docker service scale drink_backend=5             (scaling)
+      docker service update --force drink_backend      (rolling update,
+                                                       no downtime)
+  Swarm also spreads port 3000 over 2 frontend replicas (routing mesh)
+  and limits CPU/memory per service.
 
-  Remove:
+  Remove and go back to Docker Compose:
       docker stack rm drink
       docker swarm leave --force
-      docker compose up -d          (back to the Compose setup)
+      docker compose up -d
 
 
-9. API ENDPOINTS
+8. API ENDPOINTS
 ---------------------------------------------------------------------
   GET    /api/health        Service + database status, container hostname
   GET    /api/drinks        List all drinks
   GET    /api/drinks/:id    Get one drink
-  POST   /api/drinks        Create a drink        (publishes drink.created)
-  PUT    /api/drinks/:id    Update a drink        (publishes drink.updated)
-  DELETE /api/drinks/:id    Delete a drink        (publishes drink.deleted)
-  GET    /api/activities    RabbitMQ queue status + events processed by
-                            the workers
+  POST   /api/drinks        Create a drink   (publishes drink.created)
+  PUT    /api/drinks/:id    Update a drink   (publishes drink.updated)
+  DELETE /api/drinks/:id    Delete a drink   (publishes drink.deleted)
+  GET    /api/activities    RabbitMQ queue status + processed events
+
+  Drink fields: name, category, price (required), size (S/M/L,
+  required), description, image_url, status ("Còn" = available,
+  "Không khả dụng" = unavailable).
 
 
-10. ACCOUNTS / CONFIGURATION
+9. ACCOUNTS AND CONFIGURATION
 ---------------------------------------------------------------------
-  The web application has no login.
-
+  Web application:             no login
   MongoDB root account:        admin / admin123
   RabbitMQ management account: drink / drink123
 
-  Optional overrides: create a file named ".env" in the project root:
+  Optional: override the defaults in a ".env" file in the project root:
       APP_PORT=3000
       RABBITMQ_UI_PORT=15672
       MONGO_ROOT_USERNAME=admin
@@ -250,35 +221,35 @@
       RABBITMQ_USER=drink
       RABBITMQ_PASSWORD=drink123
       WORKER_DELAY_MS=2000
-  Note: credentials are only applied when the data volumes are created
-  for the first time. Run "docker compose down -v" after changing them.
+  Credentials only apply when the data volumes are first created; run
+  "docker compose down -v" after changing them.
 
 
-11. TROUBLESHOOTING
+10. TROUBLESHOOTING
 ---------------------------------------------------------------------
   - "port is already allocated": port 3000 or 15672 is in use. Set
-    APP_PORT / RABBITMQ_UI_PORT in .env (or stop the other program).
-  - Page shows "502 Bad Gateway": the backend is still starting. Wait a
-    few seconds and check "docker compose ps".
-  - Event panel shows "RabbitMQ mat ket noi": RabbitMQ is still
-    starting; the backend reconnects automatically.
-  - Wrong/old data or changed passwords: run "docker compose down -v"
-    then "docker compose up -d".
+    APP_PORT / RABBITMQ_UI_PORT in .env, or stop the other program.
+  - "502 Bad Gateway": the backend is still starting. Wait a few
+    seconds and check "docker compose ps".
+  - Queue button is red ("RabbitMQ mất kết nối" = RabbitMQ disconnected):
+    RabbitMQ is still starting; the backend reconnects automatically.
+  - Old data or changed passwords: "docker compose down -v", then
+    "docker compose up -d".
   - Swarm service stuck in "Preparing": deploy with
-    "--resolve-image never" (see section 8).
+    "--resolve-image never" (see section 7).
 
 
-12. SUBMISSION CONTENTS
+11. SUBMISSION CONTENTS
 ---------------------------------------------------------------------
   523H0023_523H0018_523H0102.pdf   Report
   demo/video-link.txt              Link to the demo video
   ReadMe.txt                       This file
+  README.md                        Project overview
   docker-compose.yml               Level 1 + Level 2 (Docker Compose)
   deploy/docker-stack.yml          Level 3 (Docker Swarm)
-  backend/                         Node.js + Express REST API (Dockerfile)
-  worker/                          RabbitMQ consumer service (Dockerfile)
-  frontend/                        React + Nginx (Dockerfile, nginx.conf)
+  backend/                         Node.js + Express REST API
+  worker/                          RabbitMQ consumer (notification service)
+  frontend/                        React + Nginx (nginx.conf)
 
-  node_modules folders are not included: all dependencies are
-  installed inside the Docker images (npm ci in each Dockerfile).
-  The user interface and the sample data are in Vietnamese.
+  node_modules folders are not included: every dependency is installed
+  inside the Docker images (npm ci in each Dockerfile).
