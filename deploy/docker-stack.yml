@@ -1,20 +1,3 @@
-# Drink Management App — Level 3: Docker Swarm
-#
-# Same services as docker-compose.yml, but orchestrated by Swarm:
-#   - replicas + automatic restart of failed containers (self-healing)
-#   - rolling update / rollback one replica at a time, without service interruption
-#   - routing mesh: port 3000 is reachable from every node, Swarm balances it over 2 frontend replicas
-#   - CPU/RAM limits per service
-#
-# Run (from the project root):
-#   docker compose build                                   # build the drink-app/* images
-#   docker compose down                                    # free ports 3000, 15672
-#   docker swarm init
-#   docker stack deploy --resolve-image never -c deploy/docker-stack.yml drink
-#
-# Swarm does not build images and does not support depends_on: services keep reconnecting
-# until MongoDB/RabbitMQ are ready (if the backend exits, Swarm restarts it).
-
 version: "3.8"
 
 x-mongo-uri: &mongo-uri mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongo:27017/drink_db?authSource=admin
@@ -32,7 +15,8 @@ services:
     networks:
       - backend-net
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5

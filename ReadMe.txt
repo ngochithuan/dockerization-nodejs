@@ -1,8 +1,10 @@
-  =====================================================================
+=====================================================================
   DRINK MANAGEMENT APP - DOCKERIZED NODE.JS WEB APPLICATION
-  Course : Web Programming with Node.js (502070)
-  Level  : 3 - Docker Compose + scaling/load balancing + RabbitMQ
-               decoupling + Docker Swarm orchestration
+  Course   : Web Programming with Node.js (502070)
+  Lecturer : Mai Van Manh
+  Level    : 3 - Docker Compose + scaling/load balancing + RabbitMQ
+                 decoupling + Docker Swarm orchestration
+  Demo video link: see demo/video-link.txt (section 12)
 =====================================================================
 
 1. TEAM MEMBERS
@@ -196,8 +198,9 @@
      Open http://localhost:3000 when all replicas show e.g. 3/3.
      The first deploy can take 2-3 minutes: mongo may stay "Preparing"
      for a while and the backend restarts until MongoDB is ready
-     (self-healing). After backend shows 3/3, wait about 10 seconds
-     for Nginx to pick up the new replica IPs.
+     (self-healing). After backend shows 3/3, wait about 40 seconds:
+     Swarm adds a replica to DNS only after its health check passes,
+     and Nginx then picks up the new IPs within 5 seconds.
 
   What Swarm adds compared to Compose:
     - Self-healing: a crashed or killed container is replaced
@@ -263,3 +266,19 @@
     then "docker compose up -d".
   - Swarm service stuck in "Preparing": deploy with
     "--resolve-image never" (see section 8).
+
+
+12. SUBMISSION CONTENTS
+---------------------------------------------------------------------
+  523H0023_523H0018_523H0102.pdf   Report
+  demo/video-link.txt              Link to the demo video
+  ReadMe.txt                       This file
+  docker-compose.yml               Level 1 + Level 2 (Docker Compose)
+  deploy/docker-stack.yml          Level 3 (Docker Swarm)
+  backend/                         Node.js + Express REST API (Dockerfile)
+  worker/                          RabbitMQ consumer service (Dockerfile)
+  frontend/                        React + Nginx (Dockerfile, nginx.conf)
+
+  node_modules folders are not included: all dependencies are
+  installed inside the Docker images (npm ci in each Dockerfile).
+  The user interface and the sample data are in Vietnamese.

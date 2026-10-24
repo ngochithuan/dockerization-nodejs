@@ -74,7 +74,7 @@ async function updateDrink(req, res, next) {
 
     const data = pickFields(req.body);
     data.updated_at = new Date();
-    const drink = await Drink.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    const drink = await Drink.findByIdAndUpdate(id, data, { returnDocument: "after", runValidators: true });
     if (!drink) return res.status(404).json({ message: "Không tìm thấy nước uống" });
     publish("drink.updated", toEvent(drink));
     res.json(drink);

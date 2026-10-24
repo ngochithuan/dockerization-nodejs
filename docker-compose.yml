@@ -1,10 +1,3 @@
-# Drink Management App — Level 1 + Level 2
-#   Level 1: frontend (React + Nginx) + backend (Node.js/Express) + database (MongoDB)
-#   Level 2: 3 backend replicas + Nginx load balancing,
-#            asynchronous service decoupling via RabbitMQ (backend publishes -> worker consumes)
-#   Level 3: Docker Swarm, see deploy/docker-stack.yml
-#
-# Start the whole system: docker compose up -d
 # Web application:        http://localhost:3000
 # RabbitMQ Management:    http://localhost:15672  (drink / drink123)
 
@@ -15,7 +8,7 @@ x-mongo-uri: &mongo-uri mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PAS
 x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-drink}:${RABBITMQ_PASSWORD:-drink123}@rabbitmq:5672
 
 services:
-  # ---------- Database ----------
+  #  Database
   mongo:
     image: mongo:7.0
     container_name: drink-mongo
@@ -28,13 +21,14 @@ services:
     networks:
       - backend-net
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test:
+        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
 
-  # ---------- Message broker ----------
+  #  Message broker
   rabbitmq:
     image: rabbitmq:3-management
     container_name: drink-rabbitmq
@@ -57,7 +51,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # ---------- Sample data seeding (runs once, then exits) ----------
+  #  Sample data seeding
   seed:
     build: ./backend
     image: drink-app/backend:latest
@@ -72,15 +66,10 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # ---------- Back-end: Node.js / Express REST API ----------
-  # Runs 3 identical replicas; Nginx in the frontend service spreads requests across them (load balancing).
-  # No container_name: container names must be unique, so a fixed name would block scaling.
-  # Change the replica count while running: docker compose up -d --scale backend=5
   backend:
     build: ./backend
     image: drink-app/backend:latest
     restart: unless-stopped
-    # The backend waits 6 seconds before shutting down (see server.js), so give Docker longer than the default 10 seconds
     stop_grace_period: 20s
     deploy:
       replicas: 3
@@ -102,9 +91,6 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # ---------- Worker: Notification service (RabbitMQ consumer) ----------
-  # Receives drink.created/updated/deleted events from the queue and processes them asynchronously.
-  # 2 replicas: RabbitMQ hands each message to one worker (competing consumers).
   worker:
     build: ./worker
     image: drink-app/worker:latest
@@ -124,7 +110,7 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # ---------- Front-end: React (build) + Nginx reverse proxy / load balancer ----------
+  # Front-end: React
   frontend:
     build:
       context: ./frontend

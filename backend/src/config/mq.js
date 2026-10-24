@@ -38,10 +38,16 @@ function publish(type, data) {
     return false;
   }
   const message = { type, data, publishedAt: new Date().toISOString(), publishedBy: os.hostname() };
-  return channel.sendToQueue(QUEUE, Buffer.from(JSON.stringify(message)), {
-    persistent: true, // tin nhắn được lưu xuống đĩa
-    contentType: "application/json",
-  });
+  try {
+    return channel.sendToQueue(QUEUE, Buffer.from(JSON.stringify(message)), {
+      persistent: true, // tin nhắn được lưu xuống đĩa
+      contentType: "application/json",
+    });
+  } catch (err) {
+    // Channel đã đóng nhưng sự kiện "close" chưa tới: bỏ qua sự kiện, request vẫn thành công
+    console.warn(`RabbitMQ publish failed (${err.message}), event "${type}" not published`);
+    return false;
+  }
 }
 
 // Số tin đang chờ trong queue và số worker đang nghe (dùng để hiển thị trên giao diện)
