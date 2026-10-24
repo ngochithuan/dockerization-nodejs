@@ -1,0 +1,179 @@
+# Drink Management App — Level 3: Docker Swarm
+#
+# Same services as docker-compose.yml, but orchestrated by Swarm:
+#   - replicas + automatic restart of failed containers (self-healing)
+#   - rolling update / rollback one replica at a time, without service interruption
+#   - routing mesh: port 3000 is reachable from every node, Swarm balances it over 2 frontend replicas
+#   - CPU/RAM limits per service
+#
+# Run (from the project root):
+#   docker compose build                                   # build the drink-app/* images
+#   docker compose down                                    # free ports 3000, 15672
+#   docker swarm init
+#   docker stack deploy --resolve-image never -c deploy/docker-stack.yml drink
+#
+# Swarm does not build images and does not support depends_on: services keep reconnecting
+# until MongoDB/RabbitMQ are ready (if the backend exits, Swarm restarts it).
+
+version: "3.8"
+
+x-mongo-uri: &mongo-uri mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongo:27017/drink_db?authSource=admin
+x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-drink}:${RABBITMQ_PASSWORD:-drink123}@rabbitmq:5672
+
+services:
+  # ---------- Database ----------
+  mongo:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - backend-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager] # the data volume lives on the manager node
+      restart_policy:
+        condition: any
+
+  # ---------- Message broker ----------
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-drink}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-drink123}
+    ports:
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - mq-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.role == manager]
+      restart_policy:
+        condition: any
+
+  # ---------- Sample data seeding: retry until it succeeds, then stop ----------
+  seed:
+    image: drink-app/backend:latest
+    command: ["node", "seed.js", "--if-empty"]
+    environment:
+      MONGO_URI: *mongo-uri
+    networks:
+      - backend-net
+    # The backend image has a HEALTHCHECK calling /api/health, but seed runs no web server:
+    # disable it so Swarm does not mark seed "unhealthy" and kill it while it waits for MongoDB
+    healthcheck:
+      disable: true
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure # exit code 0 means it is not restarted
+        delay: 5s
+        max_attempts: 20
+
+  # ---------- Back-end: 3 replicas ----------
+  backend:
+    image: drink-app/backend:latest
+    environment:
+      PORT: 8080
+      MONGO_URI: *mongo-uri
+      RABBITMQ_URL: *rabbitmq-url
+    networks:
+      - frontend-net
+      - backend-net
+      - mq-net
+    # The backend waits 6 seconds before shutting down so Nginx can stop sending it requests (see server.js)
+    stop_grace_period: 20s
+    deploy:
+      replicas: 3
+      # dnsrr: the name "backend" resolves to the IP of every replica (like Compose),
+      # so Nginx does the load balancing and the X-Upstream header still shows which replica answered
+      endpoint_mode: dnsrr
+      update_config:
+        parallelism: 1 # update one replica at a time
+        delay: 10s
+        order: start-first # the new replica must be running before the old one is stopped
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+      restart_policy:
+        condition: any
+        delay: 3s
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  # ---------- Worker: Notification service ----------
+  worker:
+    image: drink-app/worker:latest
+    environment:
+      MONGO_URI: *mongo-uri
+      RABBITMQ_URL: *rabbitmq-url
+      PROCESS_DELAY_MS: 2000
+    networks:
+      - backend-net
+      - mq-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: any
+        delay: 3s
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  # ---------- Front-end: React + Nginx, 2 replicas behind the routing mesh ----------
+  frontend:
+    image: drink-app/frontend:latest
+    ports:
+      - "3000:80"
+    networks:
+      - frontend-net
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+      restart_policy:
+        condition: any
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+
+networks:
+  frontend-net:
+    driver: overlay
+  backend-net:
+    driver: overlay
+    internal: true
+  mq-net:
+    driver: overlay
+
+volumes:
+  mongo-data:
+  rabbitmq-data:

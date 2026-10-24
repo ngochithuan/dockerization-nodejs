@@ -1,10 +1,18 @@
-# Drink Management App — Level 1
-# Chạy toàn bộ hệ thống: docker compose up -d
-# Mở trình duyệt:        http://localhost:3000
+# Drink Management App — Level 1 + Level 2
+#   Level 1: frontend (React + Nginx) + backend (Node.js/Express) + database (MongoDB)
+#   Level 2: 3 backend replicas + Nginx load balancing,
+#            asynchronous service decoupling via RabbitMQ (backend publishes -> worker consumes)
+#   Level 3: Docker Swarm, see deploy/docker-stack.yml
+#
+# Start the whole system: docker compose up -d
+# Web application:        http://localhost:3000
+# RabbitMQ Management:    http://localhost:15672  (drink / drink123)
 
 name: drink-app
 
 x-mongo-uri: &mongo-uri mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongo:27017/drink_db?authSource=admin
+# Not guest/guest: RabbitMQ only lets the guest account log in from localhost (inside the rabbitmq container)
+x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-drink}:${RABBITMQ_PASSWORD:-drink123}@rabbitmq:5672
 
 services:
   # ---------- Database ----------
@@ -20,19 +28,26 @@ services:
     networks:
       - backend-net
     healthcheck:
-      test:
-        ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
 
+  # ---------- Message broker ----------
   rabbitmq:
     image: rabbitmq:3-management
     container_name: drink-rabbitmq
+    # RabbitMQ stores data per node name (hostname): keep it fixed so queues + messages survive a recreated container
+    hostname: rabbitmq
     restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-drink}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-drink123}
     ports:
-      - "15672:15672"
+      - "${RABBITMQ_UI_PORT:-15672}:15672" # management UI; AMQP port 5672 is only used inside the Docker network
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     networks:
       - mq-net
     healthcheck:
@@ -42,7 +57,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # ---------- Seed dữ liệu mẫu (chạy 1 lần rồi thoát) ----------
+  # ---------- Sample data seeding (runs once, then exits) ----------
   seed:
     build: ./backend
     image: drink-app/backend:latest
@@ -58,20 +73,21 @@ services:
     restart: "no"
 
   # ---------- Back-end: Node.js / Express REST API ----------
-  # Chạy 3 bản sao giống hệt nhau; Nginx ở service frontend chia request cho chúng (load balancing).
-  # Không đặt container_name: tên container phải duy nhất nên sẽ chặn việc scale.
-  # Đổi số bản sao khi đang chạy: docker compose up -d --scale backend=5
+  # Runs 3 identical replicas; Nginx in the frontend service spreads requests across them (load balancing).
+  # No container_name: container names must be unique, so a fixed name would block scaling.
+  # Change the replica count while running: docker compose up -d --scale backend=5
   backend:
     build: ./backend
     image: drink-app/backend:latest
     restart: unless-stopped
+    # The backend waits 6 seconds before shutting down (see server.js), so give Docker longer than the default 10 seconds
+    stop_grace_period: 20s
     deploy:
       replicas: 3
     environment:
       PORT: 8080
       MONGO_URI: *mongo-uri
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-
+      RABBITMQ_URL: *rabbitmq-url
     expose:
       - "8080"
     networks:
@@ -86,7 +102,29 @@ services:
       rabbitmq:
         condition: service_healthy
 
-  # ---------- Front-end: React (build) + Nginx reverse proxy ----------
+  # ---------- Worker: Notification service (RabbitMQ consumer) ----------
+  # Receives drink.created/updated/deleted events from the queue and processes them asynchronously.
+  # 2 replicas: RabbitMQ hands each message to one worker (competing consumers).
+  worker:
+    build: ./worker
+    image: drink-app/worker:latest
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+    environment:
+      MONGO_URI: *mongo-uri
+      RABBITMQ_URL: *rabbitmq-url
+      PROCESS_DELAY_MS: ${WORKER_DELAY_MS:-2000}
+    networks:
+      - backend-net
+      - mq-net
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # ---------- Front-end: React (build) + Nginx reverse proxy / load balancer ----------
   frontend:
     build:
       context: ./frontend
@@ -104,15 +142,17 @@ services:
         condition: service_healthy
 
 networks:
-  # Frontend <-> Backend
+  # Frontend (Nginx) <-> Backend
   frontend-net:
     driver: bridge
-  # Backend <-> MongoDB; internal: không ra Internet, không truy cập được từ frontend
+  # Backend/Worker <-> MongoDB; internal: no Internet access, not reachable from the frontend
   backend-net:
     driver: bridge
     internal: true
+  # Backend/Worker <-> RabbitMQ
   mq-net:
     driver: bridge
 
 volumes:
   mongo-data:
+  rabbitmq-data:

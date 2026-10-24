@@ -1,0 +1,15 @@
+{
+  "name": "worker",
+  "version": "1.0.0",
+  "description": "Notification worker: consumes drink events from RabbitMQ",
+  "main": "worker.js",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "amqplib": "^2.2.0",
+    "dotenv": "^18.0.7",
+    "mongoose": "^9.11.2"
+  }
+}

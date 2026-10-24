@@ -16,6 +16,9 @@ import {
   RefreshIcon,
   SearchIcon,
 } from './components/icons'
+import EventsPanel from './components/EventsPanel'
+import QueueButton from './components/QueueButton'
+import { useActivityFeed } from './hooks/useActivityFeed'
 import { useToasts } from './hooks/useToasts'
 import type { Drink, DrinkInput, Status } from './types'
 import { errorMessage, normalizeText } from './utils'
@@ -40,6 +43,9 @@ const STATUS_KEYS: { value: 'all' | Status; label: string; lamp?: string }[] = [
 
 function App() {
   const { toasts, notify, dismiss } = useToasts()
+  const { feed, error: feedError, refresh: refreshFeed } = useActivityFeed()
+  const [eventsOpen, setEventsOpen] = useState(false)
+  const closeEvents = useCallback(() => setEventsOpen(false), [])
 
   const [drinks, setDrinks] = useState<Drink[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,6 +154,8 @@ function App() {
       notify('success', `Đã thêm "${created.name}"`)
     }
     setForm(null)
+    // Backend vừa gửi sự kiện vào RabbitMQ: cập nhật ngay số tin đang chờ
+    refreshFeed()
   }
 
   async function handleDelete() {
@@ -158,6 +166,7 @@ function App() {
       setDrinks((list) => list.filter((d) => d._id !== target._id))
       markSeen(target._id)
       notify('success', `Đã xóa "${target.name}"`)
+      refreshFeed()
       setDeleting(null)
     } catch (err) {
       notify('error', errorMessage(err))
@@ -255,6 +264,12 @@ function App() {
             </div>
           </div>
           <div className="rail__right">
+            <QueueButton
+              queue={feed?.queue ?? null}
+              error={feedError}
+              open={eventsOpen}
+              onToggle={() => setEventsOpen((v) => !v)}
+            />
             <span className={`api-lamp api-lamp--${api.tone}`} role="status">
               <span className={`lamp lamp--${api.tone}`} aria-hidden="true" />
               <span className="api-lamp__text">{api.text}</span>
@@ -395,6 +410,8 @@ function App() {
           <ConfirmDelete drink={deleting} onConfirm={handleDelete} onCancel={() => setDeleting(null)} />
         )}
       </Modal>
+
+      <EventsPanel open={eventsOpen} feed={feed} error={feedError} onClose={closeEvents} />
 
       <Toasts toasts={toasts} onDismiss={dismiss} />
     </div>

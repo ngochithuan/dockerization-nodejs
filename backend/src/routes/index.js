@@ -2,6 +2,7 @@ const os = require("os");
 const express = require("express");
 const mongoose = require("mongoose");
 const drinkRoutes = require("./drinkRoutes");
+const { getActivities } = require("../controllers/activityController");
 
 const router = express.Router();
 
@@ -17,5 +18,8 @@ router.get("/health", (req, res) => {
 });
 
 router.use("/drinks", drinkRoutes);
+
+// GET /api/activities — trạng thái queue RabbitMQ + nhật ký do service worker ghi
+router.get("/activities", getActivities);
 
 module.exports = router;
