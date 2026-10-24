@@ -23,11 +23,14 @@ connectDB()
       stopping = true;
       console.log(`${signal} received, draining for ${SHUTDOWN_DELAY_MS}ms before shutdown...`);
       setTimeout(() => {
-        server.close(async () => {
-          await mongoose.disconnect();
+        // Ngừng nhận kết nối nhưng chưa thoát: Docker Compose chỉ xóa container khỏi DNS khi nó thoát hẳn,
+        // trong lúc đó Nginx nhận "connection refused" ngay và gửi lại cho bản sao khác
+        // (thay vì chờ timeout tới IP đã mất rồi trả 502)
+        server.close();
+        setTimeout(async () => {
+          await mongoose.disconnect().catch(() => {});
           process.exit(0);
-        });
-        setTimeout(() => process.exit(1), 5000).unref();
+        }, SHUTDOWN_DELAY_MS);
       }, SHUTDOWN_DELAY_MS);
     };
     process.on("SIGTERM", shutdown);

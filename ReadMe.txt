@@ -1,4 +1,4 @@
-=====================================================================
+  =====================================================================
   DRINK MANAGEMENT APP - DOCKERIZED NODE.JS WEB APPLICATION
   Course : Web Programming with Node.js (502070)
   Level  : 3 - Docker Compose + scaling/load balancing + RabbitMQ
@@ -194,6 +194,10 @@
       docker stack services drink
       docker service ps drink_backend
      Open http://localhost:3000 when all replicas show e.g. 3/3.
+     The first deploy can take 2-3 minutes: mongo may stay "Preparing"
+     for a while and the backend restarts until MongoDB is ready
+     (self-healing). After backend shows 3/3, wait about 10 seconds
+     for Nginx to pick up the new replica IPs.
 
   What Swarm adds compared to Compose:
     - Self-healing: a crashed or killed container is replaced
