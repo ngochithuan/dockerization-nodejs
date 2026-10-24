@@ -1,17 +1,17 @@
 # Drink Management App — Level 1 + Level 2
 #   Level 1: frontend (React + Nginx) + backend (Node.js/Express) + database (MongoDB)
-#   Level 2: 3 bản sao backend + Nginx load balancing,
-#            tách service bất đồng bộ qua RabbitMQ (backend publish -> worker consume)
-#   Level 3: Docker Swarm, xem deploy/docker-stack.yml
+#   Level 2: 3 backend replicas + Nginx load balancing,
+#            asynchronous service decoupling via RabbitMQ (backend publishes -> worker consumes)
+#   Level 3: Docker Swarm, see deploy/docker-stack.yml
 #
-# Chạy toàn bộ hệ thống: docker compose up -d
-# Ứng dụng web:          http://localhost:3000
-# RabbitMQ Management:   http://localhost:15672  (drink / drink123)
+# Start the whole system: docker compose up -d
+# Web application:        http://localhost:3000
+# RabbitMQ Management:    http://localhost:15672  (drink / drink123)
 
 name: drink-app
 
 x-mongo-uri: &mongo-uri mongodb://${MONGO_ROOT_USERNAME:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongo:27017/drink_db?authSource=admin
-# Không dùng guest/guest: RabbitMQ chỉ cho tài khoản guest đăng nhập từ localhost (trong container rabbitmq)
+# Not guest/guest: RabbitMQ only lets the guest account log in from localhost (inside the rabbitmq container)
 x-rabbitmq-url: &rabbitmq-url amqp://${RABBITMQ_USER:-drink}:${RABBITMQ_PASSWORD:-drink123}@rabbitmq:5672
 
 services:
@@ -38,14 +38,14 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: drink-rabbitmq
-    # RabbitMQ lưu dữ liệu theo tên node (hostname): cố định để queue + tin nhắn còn sau khi tạo lại container
+    # RabbitMQ stores data per node name (hostname): keep it fixed so queues + messages survive a recreated container
     hostname: rabbitmq
     restart: unless-stopped
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-drink}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-drink123}
     ports:
-      - "${RABBITMQ_UI_PORT:-15672}:15672" # trang quản lý; cổng AMQP 5672 chỉ dùng trong mạng Docker
+      - "${RABBITMQ_UI_PORT:-15672}:15672" # management UI; AMQP port 5672 is only used inside the Docker network
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -57,7 +57,7 @@ services:
       retries: 5
       start_period: 20s
 
-  # ---------- Seed dữ liệu mẫu (chạy 1 lần rồi thoát) ----------
+  # ---------- Sample data seeding (runs once, then exits) ----------
   seed:
     build: ./backend
     image: drink-app/backend:latest
@@ -73,14 +73,14 @@ services:
     restart: "no"
 
   # ---------- Back-end: Node.js / Express REST API ----------
-  # Chạy 3 bản sao giống hệt nhau; Nginx ở service frontend chia request cho chúng (load balancing).
-  # Không đặt container_name: tên container phải duy nhất nên sẽ chặn việc scale.
-  # Đổi số bản sao khi đang chạy: docker compose up -d --scale backend=5
+  # Runs 3 identical replicas; Nginx in the frontend service spreads requests across them (load balancing).
+  # No container_name: container names must be unique, so a fixed name would block scaling.
+  # Change the replica count while running: docker compose up -d --scale backend=5
   backend:
     build: ./backend
     image: drink-app/backend:latest
     restart: unless-stopped
-    # Backend chờ 6 giây trước khi tắt (xem server.js), nên cho Docker đợi lâu hơn mặc định 10 giây
+    # The backend waits 6 seconds before shutting down (see server.js), so give Docker longer than the default 10 seconds
     stop_grace_period: 20s
     deploy:
       replicas: 3
@@ -103,8 +103,8 @@ services:
         condition: service_healthy
 
   # ---------- Worker: Notification service (RabbitMQ consumer) ----------
-  # Nhận sự kiện drink.created/updated/deleted từ queue và xử lý bất đồng bộ.
-  # 2 bản sao: RabbitMQ chia tin cho từng worker (competing consumers).
+  # Receives drink.created/updated/deleted events from the queue and processes them asynchronously.
+  # 2 replicas: RabbitMQ hands each message to one worker (competing consumers).
   worker:
     build: ./worker
     image: drink-app/worker:latest
@@ -145,7 +145,7 @@ networks:
   # Frontend (Nginx) <-> Backend
   frontend-net:
     driver: bridge
-  # Backend/Worker <-> MongoDB; internal: không ra Internet, không truy cập được từ frontend
+  # Backend/Worker <-> MongoDB; internal: no Internet access, not reachable from the frontend
   backend-net:
     driver: bridge
     internal: true

@@ -1,19 +1,19 @@
 # Drink Management App — Level 3: Docker Swarm
 #
-# Cùng các service như docker-compose.yml, nhưng do Swarm điều phối:
-#   - replicas + tự khởi động lại container lỗi (self-healing)
-#   - rolling update / rollback từng bản sao, không gián đoạn dịch vụ
-#   - routing mesh: cổng 3000 vào được từ mọi node, Swarm chia tải giữa 2 bản sao frontend
-#   - giới hạn CPU/RAM cho từng service
+# Same services as docker-compose.yml, but orchestrated by Swarm:
+#   - replicas + automatic restart of failed containers (self-healing)
+#   - rolling update / rollback one replica at a time, without service interruption
+#   - routing mesh: port 3000 is reachable from every node, Swarm balances it over 2 frontend replicas
+#   - CPU/RAM limits per service
 #
-# Chạy (từ thư mục gốc project):
-#   docker compose build                                   # build image drink-app/*
-#   docker compose down                                    # giải phóng cổng 3000, 15672
+# Run (from the project root):
+#   docker compose build                                   # build the drink-app/* images
+#   docker compose down                                    # free ports 3000, 15672
 #   docker swarm init
-#   docker stack deploy -c deploy/docker-stack.yml drink
+#   docker stack deploy --resolve-image never -c deploy/docker-stack.yml drink
 #
-# Swarm không build image và không hỗ trợ depends_on: các service tự kết nối lại
-# cho tới khi MongoDB/RabbitMQ sẵn sàng (backend thoát thì Swarm khởi động lại).
+# Swarm does not build images and does not support depends_on: services keep reconnecting
+# until MongoDB/RabbitMQ are ready (if the backend exits, Swarm restarts it).
 
 version: "3.8"
 
@@ -40,7 +40,7 @@ services:
     deploy:
       replicas: 1
       placement:
-        constraints: [node.role == manager] # volume dữ liệu nằm trên node manager
+        constraints: [node.role == manager] # the data volume lives on the manager node
       restart_policy:
         condition: any
 
@@ -70,7 +70,7 @@ services:
       restart_policy:
         condition: any
 
-  # ---------- Seed dữ liệu mẫu: thử lại tới khi thành công rồi dừng ----------
+  # ---------- Sample data seeding: retry until it succeeds, then stop ----------
   seed:
     image: drink-app/backend:latest
     command: ["node", "seed.js", "--if-empty"]
@@ -78,18 +78,18 @@ services:
       MONGO_URI: *mongo-uri
     networks:
       - backend-net
-    # Image backend có HEALTHCHECK gọi /api/health, nhưng seed không chạy web server:
-    # tắt đi để Swarm không coi seed là "unhealthy" rồi kill khi đang chờ MongoDB
+    # The backend image has a HEALTHCHECK calling /api/health, but seed runs no web server:
+    # disable it so Swarm does not mark seed "unhealthy" and kill it while it waits for MongoDB
     healthcheck:
       disable: true
     deploy:
       replicas: 1
       restart_policy:
-        condition: on-failure # thoát với mã 0 thì không chạy lại
+        condition: on-failure # exit code 0 means it is not restarted
         delay: 5s
         max_attempts: 20
 
-  # ---------- Back-end: 3 bản sao ----------
+  # ---------- Back-end: 3 replicas ----------
   backend:
     image: drink-app/backend:latest
     environment:
@@ -100,17 +100,17 @@ services:
       - frontend-net
       - backend-net
       - mq-net
-    # Backend chờ 6 giây trước khi tắt để Nginx kịp ngừng gửi request (xem server.js)
+    # The backend waits 6 seconds before shutting down so Nginx can stop sending it requests (see server.js)
     stop_grace_period: 20s
     deploy:
       replicas: 3
-      # dnsrr: tên "backend" trả về IP của từng bản sao (giống Compose),
-      # để Nginx tự chia tải và header X-Upstream vẫn cho biết bản sao nào xử lý
+      # dnsrr: the name "backend" resolves to the IP of every replica (like Compose),
+      # so Nginx does the load balancing and the X-Upstream header still shows which replica answered
       endpoint_mode: dnsrr
       update_config:
-        parallelism: 1 # cập nhật lần lượt từng bản sao
+        parallelism: 1 # update one replica at a time
         delay: 10s
-        order: start-first # bản mới chạy ổn rồi mới tắt bản cũ
+        order: start-first # the new replica must be running before the old one is stopped
         failure_action: rollback
       rollback_config:
         parallelism: 1
@@ -145,7 +145,7 @@ services:
           cpus: "0.25"
           memory: 128M
 
-  # ---------- Front-end: React + Nginx, 2 bản sao sau routing mesh ----------
+  # ---------- Front-end: React + Nginx, 2 replicas behind the routing mesh ----------
   frontend:
     image: drink-app/frontend:latest
     ports:

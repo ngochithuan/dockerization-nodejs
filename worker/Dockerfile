@@ -11,5 +11,5 @@ COPY . .
 
 USER node
 
-# Worker không mở cổng HTTP: chỉ nhận tin từ RabbitMQ và ghi vào MongoDB
+# The worker opens no HTTP port: it only receives messages from RabbitMQ and writes to MongoDB
 CMD ["node", "worker.js"]

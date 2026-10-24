@@ -7,9 +7,9 @@
 
 1. TEAM MEMBERS
 ---------------------------------------------------------------------
-  - <Student ID> - <Full name>
-  - <Student ID> - <Full name>
-  - <Student ID> - <Full name>
+  - 523H0018 - Le Nguyen Cao Duy
+  - 523H0102 - Ngo Chi Thuan
+  - 523H0023 - Do Nguyen Tri Hao
 
 
 2. REQUIREMENTS
