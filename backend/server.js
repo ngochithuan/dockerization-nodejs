@@ -6,6 +6,7 @@ const { connectMQ } = require("./src/config/mq");
 
 const PORT = process.env.PORT || 8080;
 
+// Delay before closing the server so in-flight requests can finish during shutdown
 const SHUTDOWN_DELAY_MS = Number(process.env.SHUTDOWN_DELAY_MS ?? 6000);
 
 connectDB()
