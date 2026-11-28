@@ -1,0 +1,8 @@
+# Root build context is only used by the seed image — whitelist what it needs.
+*
+!services/api/package.json
+!services/api/package-lock.json
+!services/api/src
+!seed
+**/node_modules
+seed/Dockerfile

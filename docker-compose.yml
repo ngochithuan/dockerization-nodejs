@@ -25,7 +25,7 @@ x-app-env: &app-env
   SMTP_PORT: ${SMTP_PORT:-465}
   SMTP_USER: ${SMTP_USER:-}
   SMTP_PASS: ${SMTP_PASS:-}
-  MAIL_FROM: ${MAIL_FROM:-PC Shop <no-reply@pcshop.local>}
+  MAIL_FROM: ${MAIL_FROM:-Circuit <no-reply@circuit.local>}
 
 services:
   nginx:
@@ -56,6 +56,8 @@ services:
     deploy:
       replicas: 3
     depends_on:
+      seed:
+        condition: service_completed_successfully
       mongo:
         condition: service_healthy
       redis:
@@ -63,6 +65,21 @@ services:
       rabbitmq:
         condition: service_healthy
     restart: unless-stopped
+
+  # One-shot: seeds the database only if it is empty and writes product images into the
+  # shared uploads volume. The api replicas wait for it, so they never race each other.
+  seed:
+    build:
+      context: .
+      dockerfile: seed/Dockerfile
+    environment:
+      <<: *app-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: 'no'
 
   notification:
     build: ./services/notification
@@ -79,6 +96,8 @@ services:
       <<: *app-env
       PORT: 4000
     depends_on:
+      api:
+        condition: service_healthy
       elasticsearch:
         condition: service_healthy
       rabbitmq:
