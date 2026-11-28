@@ -55,12 +55,21 @@ router.get(
     const limit = req.valid.query.limit || 5;
     await ensureProduct(productId);
     const [docs, total, summary, mine] = await Promise.all([
-      Review.find({ product: productId }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Review.find({ product: productId })
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
       Review.countDocuments({ product: productId }),
       ratingSummary(productId),
       req.auth ? Rating.findOne({ product: productId, user: req.auth.id }).lean() : null,
     ]);
-    res.json({ items: docs.map(toReview), ...paginate(page, limit, total), summary, myRating: mine?.value || null });
+    res.json({
+      items: docs.map(toReview),
+      ...paginate(page, limit, total),
+      summary,
+      myRating: mine?.value || null,
+    });
   },
 );
 
@@ -85,9 +94,14 @@ router.post(
     const { comment, guestName, rating } = req.valid.body;
     await ensureProduct(productId);
 
-    if (rating && !req.auth) throw AppError.unauthorized('Vui lòng đăng nhập để đánh giá sao', 'LOGIN_TO_RATE');
+    if (rating && !req.auth)
+      throw AppError.unauthorized('Vui lòng đăng nhập để đánh giá sao', 'LOGIN_TO_RATE');
     if (!req.auth && (!guestName || guestName.length < 2)) {
-      throw AppError.badRequest('Vui lòng nhập tên hiển thị', [{ path: 'guestName', message: 'Vui lòng nhập tên hiển thị' }], 'VALIDATION_ERROR');
+      throw AppError.badRequest(
+        'Vui lòng nhập tên hiển thị',
+        [{ path: 'guestName', message: 'Vui lòng nhập tên hiển thị' }],
+        'VALIDATION_ERROR',
+      );
     }
 
     let summary = null;

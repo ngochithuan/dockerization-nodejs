@@ -9,6 +9,7 @@ export function toSearchDoc(p) {
     slug: p.slug,
     brand: p.brand,
     category: String(p.category?._id || p.category),
+    categoryName: p.category?.name || '',
     tags: p.tags,
     shortDescription: p.shortDescription,
     minPrice: p.minPrice,
@@ -24,7 +25,9 @@ export function toSearchDoc(p) {
 /** Fire-and-forget: republish the given products to keep the search index in sync. */
 export function syncProducts(ids) {
   (async () => {
-    const products = await Product.find({ _id: { $in: ids } }).lean();
+    const products = await Product.find({ _id: { $in: ids } })
+      .populate('category', 'name')
+      .lean();
     for (const p of products) await publish('product.upserted', toSearchDoc(p));
   })().catch((err) => console.error('[api] product sync failed:', err.message));
 }
@@ -37,7 +40,7 @@ export function publishProductDeleted(id) {
 
 /** Republishes the whole catalogue (on search-service request, e.g. after an empty index). */
 export async function reindexAll() {
-  const cursor = Product.find().lean().cursor();
+  const cursor = Product.find().populate('category', 'name').lean().cursor();
   let n = 0;
   for await (const p of cursor) {
     await publish('product.upserted', toSearchDoc(p));

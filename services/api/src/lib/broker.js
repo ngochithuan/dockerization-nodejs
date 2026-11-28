@@ -50,7 +50,9 @@ async function ensureChannel() {
 /** Publish a persistent JSON event and wait for the broker's confirmation. */
 export async function publish(routingKey, payload) {
   const ch = await ensureChannel();
-  const body = Buffer.from(JSON.stringify({ event: routingKey, at: new Date().toISOString(), data: payload }));
+  const body = Buffer.from(
+    JSON.stringify({ event: routingKey, at: new Date().toISOString(), data: payload }),
+  );
   ch.publish(EXCHANGE, routingKey, body, { persistent: true, contentType: 'application/json' });
   await ch.waitForConfirms();
 }

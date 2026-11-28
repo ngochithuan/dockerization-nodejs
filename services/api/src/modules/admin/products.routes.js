@@ -34,7 +34,14 @@ router.get('/categories', async (_req, res) => {
     Product.aggregate([{ $group: { _id: '$category', n: { $sum: 1 } } }]),
   ]);
   const byId = new Map(counts.map((c) => [String(c._id), c.n]));
-  res.json({ items: cats.map((c) => ({ id: c._id, name: c.name, slug: c.slug, productCount: byId.get(String(c._id)) || 0 })) });
+  res.json({
+    items: cats.map((c) => ({
+      id: c._id,
+      name: c.name,
+      slug: c.slug,
+      productCount: byId.get(String(c._id)) || 0,
+    })),
+  });
 });
 
 router.post('/categories', validate({ body: categoryBody }), async (req, res) => {
@@ -161,14 +168,18 @@ async function uniqueSlug(name, excludeId) {
 
 async function assertCategory(id) {
   if (!(await Category.exists({ _id: id }))) {
-    throw AppError.badRequest('Danh mục không tồn tại', [{ path: 'category', message: 'Danh mục không tồn tại' }]);
+    throw AppError.badRequest('Danh mục không tồn tại', [
+      { path: 'category', message: 'Danh mục không tồn tại' },
+    ]);
   }
 }
 
 function assertUniqueSkus(variants) {
   const skus = variants.map((v) => v.sku.toLowerCase());
   if (new Set(skus).size !== skus.length) {
-    throw AppError.badRequest('SKU của các phiên bản phải khác nhau', [{ path: 'variants', message: 'SKU bị trùng' }]);
+    throw AppError.badRequest('SKU của các phiên bản phải khác nhau', [
+      { path: 'variants', message: 'SKU bị trùng' },
+    ]);
   }
 }
 
@@ -193,7 +204,10 @@ router.put('/products/:id', validate({ params: idParams, body: productBody }), a
   const { variants, ...rest } = body;
   product.set(rest);
   // Keep variant _ids stable so carts and orders still reference them.
-  product.variants = variants.map((v) => ({ ...v, _id: v._id ? new mongoose.Types.ObjectId(v._id) : undefined }));
+  product.variants = variants.map((v) => ({
+    ...v,
+    _id: v._id ? new mongoose.Types.ObjectId(v._id) : undefined,
+  }));
   await product.save();
   await refreshCaches();
   syncProducts([product._id]);

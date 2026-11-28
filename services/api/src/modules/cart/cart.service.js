@@ -126,7 +126,9 @@ export async function setItemQty(req, { productId, variantId, qty }) {
 export async function removeItem(req, { productId, variantId }) {
   const cart = await findCart(req);
   if (cart) {
-    cart.items = cart.items.filter((i) => !(String(i.product) === productId && String(i.variant) === variantId));
+    cart.items = cart.items.filter(
+      (i) => !(String(i.product) === productId && String(i.variant) === variantId),
+    );
     await cart.save();
   }
   return serialize(cart ? await resolveItems(cart.items) : []);
@@ -146,7 +148,9 @@ export async function mergeGuestCart(req, res, userId) {
   const lines = await resolveItems(guest.items);
   for (const l of lines) {
     if (!l.available) continue;
-    const existing = userCart.items.find((i) => String(i.product) === l.productId && String(i.variant) === l.variantId);
+    const existing = userCart.items.find(
+      (i) => String(i.product) === l.productId && String(i.variant) === l.variantId,
+    );
     const qty = Math.min((existing?.qty || 0) + l.qty, l.stock);
     if (qty <= 0) continue;
     if (existing) existing.qty = qty;

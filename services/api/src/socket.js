@@ -21,7 +21,8 @@ export function initSocket(server) {
 
   io.on('connection', (socket) => {
     socket.on('product:join', (productId) => {
-      if (typeof productId === 'string' && mongoose.isValidObjectId(productId)) socket.join(`product:${productId}`);
+      if (typeof productId === 'string' && mongoose.isValidObjectId(productId))
+        socket.join(`product:${productId}`);
     });
     socket.on('product:leave', (productId) => {
       if (typeof productId === 'string') socket.leave(`product:${productId}`);

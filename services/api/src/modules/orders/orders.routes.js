@@ -75,10 +75,14 @@ const orderBody = z
 router.post('/orders', checkoutLimiter, validate({ body: orderBody }), async (req, res) => {
   const body = req.valid.body;
   if (!req.auth && (!body.email || !body.fullName)) {
-    throw AppError.badRequest('Vui lòng nhập email và họ tên', [
-      ...(body.email ? [] : [{ path: 'email', message: 'Vui lòng nhập email' }]),
-      ...(body.fullName ? [] : [{ path: 'fullName', message: 'Vui lòng nhập họ tên' }]),
-    ], 'VALIDATION_ERROR');
+    throw AppError.badRequest(
+      'Vui lòng nhập email và họ tên',
+      [
+        ...(body.email ? [] : [{ path: 'email', message: 'Vui lòng nhập email' }]),
+        ...(body.fullName ? [] : [{ path: 'fullName', message: 'Vui lòng nhập họ tên' }]),
+      ],
+      'VALIDATION_ERROR',
+    );
   }
   delete body.card; // payment simulated — discard card data immediately
   res.status(201).json(await checkout.placeOrder(req, body));
@@ -90,7 +94,11 @@ router.get('/orders', requireAuth, validate({ query: z.object(pageQuery) }), asy
   const limit = req.valid.query.limit || 10;
   const filter = { user: req.auth.id };
   const [docs, total] = await Promise.all([
-    Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Order.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
     Order.countDocuments(filter),
   ]);
   res.json({ items: docs.map(toCustomerOrder), ...paginate(page, limit, total) });
@@ -101,7 +109,10 @@ router.get(
   requireAuth,
   validate({ params: z.object({ orderNumber: z.string().regex(/^PC\d{10}$/, 'Mã đơn không hợp lệ') }) }),
   async (req, res) => {
-    const order = await Order.findOne({ orderNumber: req.valid.params.orderNumber, user: req.auth.id }).lean();
+    const order = await Order.findOne({
+      orderNumber: req.valid.params.orderNumber,
+      user: req.auth.id,
+    }).lean();
     if (!order) throw AppError.notFound('Không tìm thấy đơn hàng', 'ORDER_NOT_FOUND');
     res.json({ order: toCustomerOrder(order) });
   },

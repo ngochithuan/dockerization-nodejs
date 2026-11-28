@@ -112,7 +112,11 @@ router.patch(
         order = await Order.findById(req.valid.params.id).session(session);
         if (!order) throw AppError.notFound('Không tìm thấy đơn hàng');
         if (!STATUS_TRANSITIONS[order.status].includes(status)) {
-          throw AppError.badRequest(`Không thể chuyển trạng thái từ "${order.status}" sang "${status}"`, undefined, 'INVALID_TRANSITION');
+          throw AppError.badRequest(
+            `Không thể chuyển trạng thái từ "${order.status}" sang "${status}"`,
+            undefined,
+            'INVALID_TRANSITION',
+          );
         }
         if (status === 'cancelled') {
           // Return stock, sold counters and loyalty points.

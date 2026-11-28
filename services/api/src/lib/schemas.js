@@ -2,9 +2,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 
 // Reusable zod building blocks.
-export const objectId = z
-  .string()
-  .refine((v) => mongoose.isValidObjectId(v), { message: 'ID không hợp lệ' });
+export const objectId = z.string().refine((v) => mongoose.isValidObjectId(v), { message: 'ID không hợp lệ' });
 
 export const email = z
   .string({ required_error: 'Vui lòng nhập email' })
@@ -36,7 +34,10 @@ const requiredText = (msg, max = 200) => z.string({ required_error: msg }).trim(
 /** Shipping address. `phone` is optional on saved addresses, required at checkout. */
 export const address = z.object({
   recipientName: requiredText('Vui lòng nhập tên người nhận', 100),
-  phone: z.union([phone, z.literal('')]).optional().default(''),
+  phone: z
+    .union([phone, z.literal('')])
+    .optional()
+    .default(''),
   street: requiredText('Vui lòng nhập số nhà, tên đường'),
   ward: z.string().trim().max(100).optional().default(''),
   district: requiredText('Vui lòng nhập quận/huyện', 100),

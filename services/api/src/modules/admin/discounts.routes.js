@@ -55,13 +55,19 @@ router.post(
         .trim()
         .toUpperCase()
         .regex(/^[A-Z0-9]{5}$/, 'Mã gồm đúng 5 ký tự chữ hoặc số'),
-      percent: z.coerce.number().int('Phần trăm phải là số nguyên').min(1, 'Tối thiểu 1%').max(90, 'Tối đa 90%'),
+      percent: z.coerce
+        .number()
+        .int('Phần trăm phải là số nguyên')
+        .min(1, 'Tối thiểu 1%')
+        .max(90, 'Tối đa 90%'),
       usageLimit: z.coerce.number().int().min(1, 'Tối thiểu 1 lượt').max(10, 'Tối đa 10 lượt'),
     }),
   }),
   async (req, res) => {
     if (await DiscountCode.exists({ code: req.valid.body.code })) {
-      throw AppError.conflict('Mã giảm giá đã tồn tại', 'CODE_TAKEN', [{ path: 'code', message: 'Mã đã tồn tại' }]);
+      throw AppError.conflict('Mã giảm giá đã tồn tại', 'CODE_TAKEN', [
+        { path: 'code', message: 'Mã đã tồn tại' },
+      ]);
     }
     const code = await DiscountCode.create(req.valid.body);
     res.status(201).json({ discount: code });

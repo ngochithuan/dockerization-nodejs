@@ -23,24 +23,24 @@ const toRow = (u) => ({
   createdAt: u.createdAt,
 });
 
-router.get(
-  '/users',
-  validate({ query: z.object({ ...pageQuery, q: trimmedSearch }) }),
-  async (req, res) => {
-    const { page, q } = req.valid.query;
-    const limit = req.valid.query.limit || 20;
-    const filter = {};
-    if (q) {
-      const rx = new RegExp(escapeRegex(q), 'i');
-      filter.$or = [{ email: rx }, { fullName: rx }];
-    }
-    const [docs, total] = await Promise.all([
-      User.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-      User.countDocuments(filter),
-    ]);
-    res.json({ items: docs.map(toRow), ...paginate(page, limit, total) });
-  },
-);
+router.get('/users', validate({ query: z.object({ ...pageQuery, q: trimmedSearch }) }), async (req, res) => {
+  const { page, q } = req.valid.query;
+  const limit = req.valid.query.limit || 20;
+  const filter = {};
+  if (q) {
+    const rx = new RegExp(escapeRegex(q), 'i');
+    filter.$or = [{ email: rx }, { fullName: rx }];
+  }
+  const [docs, total] = await Promise.all([
+    User.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    User.countDocuments(filter),
+  ]);
+  res.json({ items: docs.map(toRow), ...paginate(page, limit, total) });
+});
 
 router.get('/users/:id', validate({ params: idParams }), async (req, res) => {
   const user = await User.findById(req.valid.params.id).lean();
@@ -50,7 +50,11 @@ router.get('/users/:id', validate({ params: idParams }), async (req, res) => {
       { $match: { user: user._id, status: { $ne: 'cancelled' } } },
       { $group: { _id: null, orders: { $sum: 1 }, spent: { $sum: '$total' } } },
     ]),
-    Order.find({ user: user._id }).sort({ createdAt: -1 }).limit(10).select('orderNumber total status createdAt').lean(),
+    Order.find({ user: user._id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('orderNumber total status createdAt')
+      .lean(),
   ]);
   res.json({
     user: { ...toRow(user), addresses: user.addresses },
@@ -82,7 +86,8 @@ router.post(
   async (req, res) => {
     const user = await User.findById(req.valid.params.id);
     if (!user) throw AppError.notFound('Không tìm thấy người dùng');
-    if (user.role === 'admin') throw AppError.badRequest('Không thể khóa tài khoản quản trị', undefined, 'CANNOT_BAN_ADMIN');
+    if (user.role === 'admin')
+      throw AppError.badRequest('Không thể khóa tài khoản quản trị', undefined, 'CANNOT_BAN_ADMIN');
     user.isBanned = req.valid.body.banned;
     await user.save();
     await invalidate(CACHE_KEYS.user(user._id)); // takes effect immediately on every replica

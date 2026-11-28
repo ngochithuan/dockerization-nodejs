@@ -9,7 +9,10 @@ export const POINTS_EARN_RATE = 0.1; // earn 10% of the amount paid, as points
  * @param {number} subtotal Σ unitPrice × qty
  * @param {{ discountPercent?: number, pointsRequested?: number, pointsBalance?: number }} opts
  */
-export function computeTotals(subtotal, { discountPercent = 0, pointsRequested = 0, pointsBalance = 0 } = {}) {
+export function computeTotals(
+  subtotal,
+  { discountPercent = 0, pointsRequested = 0, pointsBalance = 0 } = {},
+) {
   const discountAmount = Math.round((subtotal * discountPercent) / 100);
   const afterDiscount = subtotal - discountAmount;
   const tax = Math.round(afterDiscount * VAT_RATE);

@@ -16,7 +16,8 @@ export const SORTS = {
   'top-rated': { avgRating: -1, ratingCount: -1, _id: -1 },
 };
 
-const CARD_FIELDS = 'name slug brand category tags shortDescription images minPrice maxPrice avgRating ratingCount soldCount variants.stock createdAt';
+const CARD_FIELDS =
+  'name slug brand category tags shortDescription images minPrice maxPrice avgRating ratingCount soldCount variants.stock createdAt';
 
 /** Lightweight product shape for grids. */
 export function toCard(p) {
@@ -46,7 +47,12 @@ export function listCategories() {
       Product.aggregate([{ $match: { isActive: true } }, { $group: { _id: '$category', n: { $sum: 1 } } }]),
     ]);
     const byId = new Map(counts.map((c) => [String(c._id), c.n]));
-    return cats.map((c) => ({ id: c._id, name: c.name, slug: c.slug, productCount: byId.get(String(c._id)) || 0 }));
+    return cats.map((c) => ({
+      id: c._id,
+      name: c.name,
+      slug: c.slug,
+      productCount: byId.get(String(c._id)) || 0,
+    }));
   });
 }
 
@@ -109,10 +115,20 @@ export async function listProducts(query) {
       size: limit,
     });
     if (es) {
-      const docs = await Product.find({ _id: { $in: es.ids } }).select(CARD_FIELDS).lean();
+      const docs = await Product.find({ _id: { $in: es.ids } })
+        .select(CARD_FIELDS)
+        .lean();
       const byId = new Map(docs.map((d) => [String(d._id), d]));
-      const items = es.ids.map((id) => byId.get(id)).filter(Boolean).map(toCard);
-      return { items, ...paginate(page, limit, es.total), facets: { brands: es.brands }, engine: 'elasticsearch' };
+      const items = es.ids
+        .map((id) => byId.get(id))
+        .filter(Boolean)
+        .map(toCard);
+      return {
+        items,
+        ...paginate(page, limit, es.total),
+        facets: { brands: es.brands },
+        engine: 'elasticsearch',
+      };
     }
   }
 
@@ -128,7 +144,12 @@ export async function listProducts(query) {
     Product.countDocuments(filter),
     brandFacet(facetFilter),
   ]);
-  return { items: docs.map(toCard), ...paginate(page, limit, total), facets: { brands: brandsFacet }, engine: 'mongodb' };
+  return {
+    items: docs.map(toCard),
+    ...paginate(page, limit, total),
+    facets: { brands: brandsFacet },
+    engine: 'mongodb',
+  };
 }
 
 /** Landing page sections: new products, best sellers and three category showcases. */
@@ -177,7 +198,13 @@ export async function getProductBySlug(slug) {
     shortDescription: p.shortDescription,
     specs: p.specs,
     images: p.images,
-    variants: p.variants.map((v) => ({ id: v._id, sku: v.sku, name: v.name, price: v.price, stock: v.stock })),
+    variants: p.variants.map((v) => ({
+      id: v._id,
+      sku: v.sku,
+      name: v.name,
+      price: v.price,
+      stock: v.stock,
+    })),
     minPrice: p.minPrice,
     maxPrice: p.maxPrice,
     avgRating: p.avgRating,

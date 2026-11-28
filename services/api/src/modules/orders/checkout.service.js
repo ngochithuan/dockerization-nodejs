@@ -49,7 +49,9 @@ export async function quote(req, { discountCode, pointsToUse }) {
   const lines = cart ? (await resolveItems(cart.items)).filter((l) => l.available) : [];
   const subtotal = lines.reduce((s, l) => s + l.lineTotal, 0);
   const discount = await checkDiscount(discountCode);
-  const balance = req.auth ? (await User.findById(req.auth.id).select('loyaltyPoints').lean())?.loyaltyPoints || 0 : 0;
+  const balance = req.auth
+    ? (await User.findById(req.auth.id).select('loyaltyPoints').lean())?.loyaltyPoints || 0
+    : 0;
   const summary = computeTotals(subtotal, {
     discountPercent: discount?.valid ? discount.percent : 0,
     pointsRequested: req.auth ? pointsToUse : 0,
@@ -85,11 +87,15 @@ export async function placeOrder(req, input) {
     await session.withTransaction(async () => {
       setPasswordUrl = null;
       const cart = await Cart.findOne(f).session(session);
-      if (!cart || cart.items.length === 0) throw AppError.badRequest('Giỏ hàng trống', undefined, 'CART_EMPTY');
+      if (!cart || cart.items.length === 0)
+        throw AppError.badRequest('Giỏ hàng trống', undefined, 'CART_EMPTY');
       const lines = await resolveItems(cart.items);
       const unavailable = lines.find((l) => !l.available);
       if (unavailable) {
-        throw AppError.conflict('Một sản phẩm trong giỏ không còn kinh doanh, vui lòng xóa khỏi giỏ', 'ITEM_UNAVAILABLE');
+        throw AppError.conflict(
+          'Một sản phẩm trong giỏ không còn kinh doanh, vui lòng xóa khỏi giỏ',
+          'ITEM_UNAVAILABLE',
+        );
       }
 
       // 1. Decrement stock per variant, only if enough is left.
@@ -116,7 +122,12 @@ export async function placeOrder(req, input) {
           { $inc: { usedCount: 1 } },
           { new: true, session },
         );
-        if (!d) throw AppError.badRequest('Mã giảm giá không hợp lệ hoặc đã hết lượt', undefined, 'DISCOUNT_INVALID');
+        if (!d)
+          throw AppError.badRequest(
+            'Mã giảm giá không hợp lệ hoặc đã hết lượt',
+            undefined,
+            'DISCOUNT_INVALID',
+          );
         discountPercent = d.percent;
       }
 
@@ -126,7 +137,8 @@ export async function placeOrder(req, input) {
         user = await User.findById(req.auth.id).session(session);
       } else {
         user = await User.findOne({ email: input.email }).session(session);
-        if (user?.isBanned) throw AppError.forbidden('Tài khoản gắn với email này đã bị khóa', 'ACCOUNT_BANNED');
+        if (user?.isBanned)
+          throw AppError.forbidden('Tài khoản gắn với email này đã bị khóa', 'ACCOUNT_BANNED');
         if (!user) {
           user = new User({
             email: input.email,

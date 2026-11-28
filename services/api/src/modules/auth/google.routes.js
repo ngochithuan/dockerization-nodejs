@@ -18,7 +18,12 @@ const fail = (res, reason) => res.redirect(`/login?error=${reason}`);
 router.get('/', (_req, res) => {
   if (!googleEnabled) return fail(res, 'google_disabled');
   const state = crypto.randomBytes(24).toString('base64url');
-  res.cookie(STATE_COOKIE, state, { httpOnly: true, sameSite: 'lax', maxAge: 10 * 60 * 1000, path: '/api/auth/google' });
+  res.cookie(STATE_COOKIE, state, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 10 * 60 * 1000,
+    path: '/api/auth/google',
+  });
   const params = new URLSearchParams({
     client_id: env.google.clientId,
     redirect_uri: env.google.callbackUrl,
@@ -34,7 +39,13 @@ router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
   const expected = req.cookies?.[STATE_COOKIE];
   res.clearCookie(STATE_COOKIE, { path: '/api/auth/google' });
-  if (!googleEnabled || typeof code !== 'string' || typeof state !== 'string' || !expected || state !== expected) {
+  if (
+    !googleEnabled ||
+    typeof code !== 'string' ||
+    typeof state !== 'string' ||
+    !expected ||
+    state !== expected
+  ) {
     return fail(res, 'google_state');
   }
   try {

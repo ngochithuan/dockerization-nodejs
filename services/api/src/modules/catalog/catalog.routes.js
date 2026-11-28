@@ -32,8 +32,12 @@ router.get('/products', validate({ query: listQuery }), async (req, res) => {
   res.json(await catalog.listProducts(req.valid.query));
 });
 
-router.get('/products/:slug', validate({ params: z.object({ slug: z.string().max(120) }) }), async (req, res) => {
-  res.json(await catalog.getProductBySlug(req.valid.params.slug));
-});
+router.get(
+  '/products/:slug',
+  validate({ params: z.object({ slug: z.string().max(120) }) }),
+  async (req, res) => {
+    res.json(await catalog.getProductBySlug(req.valid.params.slug));
+  },
+);
 
 export default router;

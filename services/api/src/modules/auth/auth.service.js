@@ -23,7 +23,10 @@ export async function issuePasswordToken(user, ttlMs, { session } = {}) {
 
 export async function register({ email, fullName, address }) {
   if (await User.exists({ email })) {
-    throw AppError.conflict('Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng chức năng quên mật khẩu.', 'EMAIL_TAKEN');
+    throw AppError.conflict(
+      'Email này đã được đăng ký. Vui lòng đăng nhập hoặc dùng chức năng quên mật khẩu.',
+      'EMAIL_TAKEN',
+    );
   }
   const user = new User({ email, fullName, addresses: [{ ...address, isDefault: true }] });
   const link = await issuePasswordToken(user, SETUP_TTL_MS);
@@ -51,7 +54,10 @@ export async function requestPasswordReset(email) {
 
 /** Consumes a reset / set-password token (single use, must not be expired). */
 export async function resetPassword({ token, password }) {
-  const user = await User.findOne({ resetTokenHash: hashToken(token), resetTokenExpires: { $gt: new Date() } });
+  const user = await User.findOne({
+    resetTokenHash: hashToken(token),
+    resetTokenExpires: { $gt: new Date() },
+  });
   if (!user) throw AppError.badRequest('Liên kết không hợp lệ hoặc đã hết hạn', undefined, 'INVALID_TOKEN');
   if (user.isBanned) throw AppError.forbidden('Tài khoản của bạn đã bị khóa', 'ACCOUNT_BANNED');
   user.passwordHash = await hashPassword(password);
@@ -62,10 +68,15 @@ export async function resetPassword({ token, password }) {
 }
 
 export async function checkToken(token) {
-  const user = await User.findOne({ resetTokenHash: hashToken(token), resetTokenExpires: { $gt: new Date() } })
+  const user = await User.findOne({
+    resetTokenHash: hashToken(token),
+    resetTokenExpires: { $gt: new Date() },
+  })
     .select('email passwordHash')
     .lean();
-  return user ? { valid: true, email: user.email, hasPassword: Boolean(user.passwordHash) } : { valid: false };
+  return user
+    ? { valid: true, email: user.email, hasPassword: Boolean(user.passwordHash) }
+    : { valid: false };
 }
 
 export async function changePassword(userId, { currentPassword, newPassword }) {
@@ -74,9 +85,11 @@ export async function changePassword(userId, { currentPassword, newPassword }) {
   if (user.passwordHash) {
     const ok = currentPassword && (await bcrypt.compare(currentPassword, user.passwordHash));
     if (!ok) {
-      throw AppError.badRequest('Mật khẩu hiện tại không đúng', [
-        { path: 'currentPassword', message: 'Mật khẩu hiện tại không đúng' },
-      ], 'WRONG_PASSWORD');
+      throw AppError.badRequest(
+        'Mật khẩu hiện tại không đúng',
+        [{ path: 'currentPassword', message: 'Mật khẩu hiện tại không đúng' }],
+        'WRONG_PASSWORD',
+      );
     }
   }
   user.passwordHash = await hashPassword(newPassword);

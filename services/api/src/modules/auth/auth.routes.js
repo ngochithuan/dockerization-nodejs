@@ -57,9 +57,13 @@ router.post('/forgot-password', forgotLimiter, validate({ body: z.object({ email
 
 const tokenSchema = z.string().min(20).max(200);
 
-router.get('/reset-password/:token', validate({ params: z.object({ token: tokenSchema }) }), async (req, res) => {
-  res.json(await auth.checkToken(req.valid.params.token));
-});
+router.get(
+  '/reset-password/:token',
+  validate({ params: z.object({ token: tokenSchema }) }),
+  async (req, res) => {
+    res.json(await auth.checkToken(req.valid.params.token));
+  },
+);
 
 router.post(
   '/reset-password',

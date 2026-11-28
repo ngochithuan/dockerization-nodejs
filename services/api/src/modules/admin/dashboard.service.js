@@ -15,7 +15,10 @@ export async function simpleDashboard() {
   const [totalUsers, newUsers, orderAgg, monthAgg, bestSellers, monthly, statusRows] = await Promise.all([
     User.countDocuments({ role: 'customer' }),
     User.countDocuments({ role: 'customer', createdAt: { $gte: monthStart } }),
-    Order.aggregate([{ $match: SOLD }, { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: '$total' } } }]),
+    Order.aggregate([
+      { $match: SOLD },
+      { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
+    ]),
     Order.aggregate([
       { $match: { ...SOLD, createdAt: { $gte: monthStart } } },
       { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
@@ -234,7 +237,12 @@ export async function advancedDashboard(query) {
     unit,
     from: from.toISOString(),
     to: new Date(to.getTime() - 1).toISOString(),
-    totals: { orders: sum('orders'), revenue: sum('revenue'), profit: sum('profit'), productsSold: sum('productsSold') },
+    totals: {
+      orders: sum('orders'),
+      revenue: sum('revenue'),
+      profit: sum('profit'),
+      productsSold: sum('productsSold'),
+    },
     buckets,
     categories: cats.map((c) => c.name),
     categoryTotals: Object.entries(categoryTotals)
