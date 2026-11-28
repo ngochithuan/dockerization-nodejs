@@ -615,6 +615,11 @@
     grid-template-columns: 1fr;
     gap: var(--sp-5);
   }
+  .pdp .gallery {
+    width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
+  }
 }
 .gallery {
   display: flex;

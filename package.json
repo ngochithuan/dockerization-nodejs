@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "scaling-demo": "node scripts/scaling-demo.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

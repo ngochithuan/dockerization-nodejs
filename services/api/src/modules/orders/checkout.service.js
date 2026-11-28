@@ -135,6 +135,7 @@ export async function placeOrder(req, input) {
       let user;
       if (req.auth) {
         user = await User.findById(req.auth.id).session(session);
+        if (!user) throw AppError.unauthorized();
       } else {
         user = await User.findOne({ email: input.email }).session(session);
         if (user?.isBanned)
