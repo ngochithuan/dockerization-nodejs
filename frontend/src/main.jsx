@@ -19,8 +19,13 @@ import './styles/base.css';
 import './styles/components.css';
 import './styles/layout.css';
 import './styles/pages.css';
+import './styles/shop.css';
+import './styles/account.css';
+import './styles/admin.css';
 
 import App from './App.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
+import { CartProvider } from './context/CartContext.jsx';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,7 +41,11 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <App />
+        <AuthProvider>
+          <CartProvider>
+            <App />
+          </CartProvider>
+        </AuthProvider>
         <Toaster
           position="top-right"
           toastOptions={{

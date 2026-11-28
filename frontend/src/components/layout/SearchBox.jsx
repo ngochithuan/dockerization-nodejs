@@ -8,7 +8,9 @@ export default function SearchBox({ autoFocus }) {
   const [q, setQ] = useState(params.get('q') || '');
 
   // Keep the box in sync when the URL query changes (back/forward, clearing filters).
-  useEffect(() => setQ(params.get('q') || ''), [params]);
+  useEffect(() => {
+    setQ(params.get('q') || '');
+  }, [params]);
 
   const submit = (e) => {
     e.preventDefault();

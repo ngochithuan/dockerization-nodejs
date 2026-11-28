@@ -1,16 +1,47 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BadgePercent, ShieldCheck, Truck, UserCheck } from 'lucide-react';
-import { CATEGORIES } from '../lib/categories.js';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowRight, BadgePercent, Flame, ShieldCheck, Sparkles, Truck, UserCheck } from 'lucide-react';
+import { api } from '../lib/api.js';
+import { CATEGORIES, categoryIcon } from '../lib/categories.js';
+import { useTitle } from '../lib/hooks.js';
 import Button from '../components/ui/Button.jsx';
+import { ErrorState } from '../components/ui/States.jsx';
+import { ProductGrid } from '../components/product/ProductCard.jsx';
 
 const PERKS = [
   { icon: Truck, title: 'Giao hàng toàn quốc', text: 'Miễn phí cho đơn từ 5.000.000đ' },
   { icon: ShieldCheck, title: 'Chính hãng 100%', text: 'Bảo hành theo nhà sản xuất' },
   { icon: BadgePercent, title: 'Tích điểm 10%', text: '1 điểm = 1.000đ, dùng ngay đơn sau' },
-  { icon: UserCheck, title: 'Không cần tài khoản', text: 'Đặt hàng nhanh với email' },
+  { icon: UserCheck, title: 'Không cần tài khoản', text: 'Đặt hàng nhanh chỉ với email' },
 ];
 
+function Section({ eyebrow, title, icon: Icon, to, items, loading }) {
+  return (
+    <section className="container section">
+      <div className="section__head">
+        <div>
+          <span className="section__eyebrow">{eyebrow}</span>
+          <h2 className="section__title row" style={{ gap: 10 }}>
+            {Icon && <Icon size={24} className="section__icon" />}
+            {title}
+          </h2>
+        </div>
+        <Link to={to} className="link-arrow">
+          Xem tất cả <ArrowRight size={16} />
+        </Link>
+      </div>
+      <ProductGrid items={items || []} loading={loading} count={4} />
+    </section>
+  );
+}
+
 export default function HomePage() {
+  useTitle();
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['home'],
+    queryFn: () => api.get('/home'),
+  });
+
   return (
     <>
       <section className="hero">
@@ -56,9 +87,6 @@ export default function HomePage() {
             <span className="section__eyebrow">Danh mục</span>
             <h2 className="section__title">Mua theo danh mục</h2>
           </div>
-          <Link to="/products" className="link-arrow">
-            Xem tất cả <ArrowRight size={16} />
-          </Link>
         </div>
         <div className="cat-grid">
           {CATEGORIES.map(({ slug, name, icon: Icon }) => (
@@ -71,6 +99,41 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+
+      {isError ? (
+        <div className="container">
+          <ErrorState error={error} onRetry={refetch} />
+        </div>
+      ) : (
+        <>
+          <Section
+            eyebrow="Vừa cập bến"
+            title="Sản phẩm mới"
+            icon={Sparkles}
+            to="/products?sort=newest"
+            items={data?.newProducts}
+            loading={isLoading}
+          />
+          <Section
+            eyebrow="Được tin chọn"
+            title="Bán chạy nhất"
+            icon={Flame}
+            to="/products?sort=best-selling"
+            items={data?.bestSellers}
+            loading={isLoading}
+          />
+          {(data?.categories || []).map((c) => (
+            <Section
+              key={c.slug}
+              eyebrow="Danh mục nổi bật"
+              title={c.name}
+              icon={categoryIcon(c.slug)}
+              to={`/products?category=${c.slug}`}
+              items={c.items}
+            />
+          ))}
+        </>
+      )}
     </>
   );
 }
