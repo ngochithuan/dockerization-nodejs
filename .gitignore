@@ -147,3 +147,5 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Test PR: kiem tra base branch mac dinh khi mo Pull Request
