@@ -37,7 +37,11 @@ export async function startConsumer({ url, queue, bindings, handler }) {
   });
   await ch.assertQueue(retryQueue, {
     durable: true,
-    arguments: { 'x-message-ttl': RETRY_DELAY_MS, 'x-dead-letter-exchange': '', 'x-dead-letter-routing-key': queue },
+    arguments: {
+      'x-message-ttl': RETRY_DELAY_MS,
+      'x-dead-letter-exchange': '',
+      'x-dead-letter-routing-key': queue,
+    },
   });
   await ch.assertQueue(deadQueue, { durable: true });
   for (const key of bindings) await ch.bindQueue(queue, EXCHANGE, key);

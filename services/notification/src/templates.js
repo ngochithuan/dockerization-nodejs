@@ -1,6 +1,9 @@
 // HTML e-mail templates (inline styles for e-mail client compatibility).
 const esc = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 const money = (n) => `${new Intl.NumberFormat('vi-VN').format(Math.round(n || 0))}đ`;
 const pad = (n) => String(n).padStart(2, '0');
 function dateTime(iso) {

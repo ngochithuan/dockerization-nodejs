@@ -4,7 +4,7 @@ import { deleteProduct, ensureIndex, es, search, upsertProduct, waitForElastic }
 
 // search-service: owns the Elasticsearch index.
 //  - keeps it in sync by consuming product.upserted / product.deleted events (RabbitMQ)
-//  - on an empty index, publishes search.reindex_requested so the catalogue is re-sent
+//  - on startup, publishes search.reindex_requested so the catalogue is re-sent
 //  - serves GET /search for the api (which falls back to MongoDB if this service is down)
 const PORT = Number(process.env.PORT || 4000);
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
@@ -61,12 +61,10 @@ async function main() {
       else if (routingKey === 'product.deleted') await deleteProduct(data.id);
     },
   });
-  if (count === 0) {
-    publish('search.reindex_requested', { reason: 'empty-index' });
-    console.log('[search] index empty — requested a full reindex');
-  } else {
-    console.log(`[search] index has ${count} products`);
-  }
+  // Ask the api to re-send the catalogue on every start: upserts are idempotent, so this
+  // self-heals an empty or stale index (e.g. events lost while this service was down).
+  publish('search.reindex_requested', { reason: count === 0 ? 'empty-index' : 'startup-sync' });
+  console.log(`[search] index has ${count} products — requested a full resync`);
   app.listen(PORT, () => console.log(`[search] listening on :${PORT}`));
 }
 

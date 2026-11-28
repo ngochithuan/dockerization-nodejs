@@ -1,6 +1,6 @@
 import { Client } from '@elastic/elasticsearch';
 
-export const INDEX = 'products';
+export const INDEX = 'products_v2';
 export const es = new Client({ node: process.env.ELASTICSEARCH_URL || 'http://localhost:9200' });
 
 const MAPPING = {
@@ -17,12 +17,20 @@ const MAPPING = {
   },
   mappings: {
     properties: {
-      name: { type: 'text', analyzer: 'folding', fields: { sort: { type: 'keyword', normalizer: 'lower' } } },
+      // `all` gathers every searchable field so multi-word queries can require all terms.
+      all: { type: 'text', analyzer: 'folding' },
+      name: {
+        type: 'text',
+        analyzer: 'folding',
+        copy_to: 'all',
+        fields: { sort: { type: 'keyword', normalizer: 'lower' } },
+      },
+      categoryName: { type: 'text', analyzer: 'folding', copy_to: 'all' },
       slug: { type: 'keyword' },
-      brand: { type: 'text', analyzer: 'folding', fields: { keyword: { type: 'keyword' } } },
+      brand: { type: 'text', analyzer: 'folding', copy_to: 'all', fields: { keyword: { type: 'keyword' } } },
       category: { type: 'keyword' },
-      tags: { type: 'text', analyzer: 'folding', fields: { keyword: { type: 'keyword' } } },
-      shortDescription: { type: 'text', analyzer: 'folding' },
+      tags: { type: 'text', analyzer: 'folding', copy_to: 'all', fields: { keyword: { type: 'keyword' } } },
+      shortDescription: { type: 'text', analyzer: 'folding', copy_to: 'all' },
       minPrice: { type: 'long' },
       maxPrice: { type: 'long' },
       avgRating: { type: 'float' },
@@ -77,7 +85,18 @@ const SORT = {
 };
 
 /** Full-text search with fuzzy matching; filters, sort and the brand facet run in ES. */
-export async function search({ q, category, tag, brand = [], minPrice, maxPrice, rating, sort, from = 0, size = 12 }) {
+export async function search({
+  q,
+  category,
+  tag,
+  brand = [],
+  minPrice,
+  maxPrice,
+  rating,
+  sort,
+  from = 0,
+  size = 12,
+}) {
   const filter = [{ term: { isActive: true } }];
   if (category) filter.push({ term: { category } });
   if (tag) filter.push({ term: { 'tags.keyword': tag } });
@@ -94,8 +113,9 @@ export async function search({ q, category, tag, brand = [], minPrice, maxPrice,
               {
                 multi_match: {
                   query: q,
-                  fields: ['name^4', 'brand^3', 'tags^2', 'shortDescription'],
-                  fuzziness: 'AUTO',
+                  fields: ['name^4', 'brand^3', 'tags^2', 'categoryName^2', 'all'],
+                  operator: 'and',
+                  fuzziness: 'AUTO:5,8', // short tokens such as model numbers (4070) must match exactly
                   prefix_length: 1,
                 },
               },

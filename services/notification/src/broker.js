@@ -58,7 +58,9 @@ export async function startConsumer({ url, queue, bindings, handler }) {
       await handler(msg.fields.routingKey, event.data);
       ch.ack(msg);
     } catch (err) {
-      console.error(`[notification] ${msg.fields.routingKey} failed (attempt ${attempts + 1}): ${err.message}`);
+      console.error(
+        `[notification] ${msg.fields.routingKey} failed (attempt ${attempts + 1}): ${err.message}`,
+      );
       if (attempts + 1 >= MAX_ATTEMPTS || !event) {
         ch.sendToQueue(deadQueue, msg.content, {
           persistent: true,
