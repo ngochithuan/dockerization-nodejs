@@ -1,0 +1,17 @@
+{
+  "name": "pcshop-notification",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.5",
+    "nodemailer": "^6.10.1"
+  }
+}
